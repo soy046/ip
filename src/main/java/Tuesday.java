@@ -34,7 +34,7 @@ public class Tuesday {
         // process mark command
         if (command == Command.MARK || command == Command.UNMARK) {
             if (!Parser.isAvailableMark(input, taskCount)) {
-                return false;
+                throw new TuesdayExceptions.UnknownCommandException(input);
             }
 
             Scanner scanner = new Scanner(input);
@@ -53,7 +53,7 @@ public class Tuesday {
         }
 
         if (!Parser.isAvailableTaskCommand(input)) {
-            return false;
+            throw new TuesdayExceptions.UnknownCommandException(input);
         }
 
         if (taskCount >= tasks.length) {
@@ -115,7 +115,6 @@ public class Tuesday {
                 }
                 tuesdayPrint(taskList.toString());
                 input = sc.nextLine();
-                continue;
             // process mark, unmark, todo, deadline, and event commands
             } else if (command == Command.MARK || command == Command.UNMARK
                     || command == Command.TODO || command == Command.DEADLINE
@@ -132,7 +131,6 @@ public class Tuesday {
                     tuesdayPrint("Sir, this will cost too much time");
                 }
                 input = sc.nextLine();
-                continue;
             }
         }
 
