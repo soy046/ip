@@ -36,8 +36,9 @@ public class Parser {
      * @param input the complete line entered by the user
      * @return true if the input is a valid todo, deadline, or event command
      */
-    public static boolean isAvailableTaskCommand(String input) throws TuesdayExceptions.NoDescriptionnException,
-    TuesdayExceptions.DeadlineMissingByDateException{
+    public static boolean isAvailableTaskCommand(String input)
+            throws TuesdayExceptions.NoDescriptionnException,
+            TuesdayExceptions.DeadlineMissingByDateException {
         return switch (getCommand(input)) {
         case TODO -> hasDescription(input, "todo");
         case DEADLINE -> isValidDeadline(input);
@@ -86,9 +87,15 @@ public class Parser {
     /**
      * Checks that a deadline has exactly one non-empty /by section.
      */
-    private static boolean isValidDeadline(String input) throws TuesdayExceptions.DeadlineMissingByDateException {
+    private static boolean isValidDeadline(String input)
+            throws TuesdayExceptions.NoDescriptionnException,
+            TuesdayExceptions.DeadlineMissingByDateException {
         String details = input.trim().substring("deadline".length()).trim();
         int byIndex = details.indexOf("/by");
+
+        if (details.isEmpty() || (byIndex >= 0 && details.substring(0, byIndex).trim().isEmpty())) {
+            throw new TuesdayExceptions.NoDescriptionnException("deadline");
+        }
 
         if (byIndex <= 0 || details.substring(byIndex + 3).trim().isEmpty()) {
             throw new TuesdayExceptions.DeadlineMissingByDateException("");
@@ -100,10 +107,14 @@ public class Parser {
     /**
      * Checks that an event has exactly one /from section and one /to section.
      */
-    private static boolean isValidEvent(String input) {
+    private static boolean isValidEvent(String input) throws TuesdayExceptions.NoDescriptionnException {
         String details = input.trim().substring("event".length()).trim();
         int fromIndex = details.indexOf("/from");
         int toIndex = details.indexOf("/to");
+
+        if (details.isEmpty() || fromIndex == 0) {
+            throw new TuesdayExceptions.NoDescriptionnException("event");
+        }
 
         return fromIndex > 0
                 && toIndex > fromIndex

@@ -125,12 +125,12 @@ public class Tuesday {
                     }
                 } catch (TuesdayExceptions.NoDescriptionnException e) {
                     tuesdayPrint("please add description, sir!");
+                } catch (TuesdayExceptions.DeadlineMissingByDateException e) {
+                    tuesdayPrint("please add a deadline date, sir!");
                 } catch (TuesdayExceptions.UnknownCommandException e) {
                     tuesdayPrint("Sir, what do you mean by " + e.getMessage());
                 } catch (TuesdayExceptions.TaskNumberOutRangeException e) {
                     tuesdayPrint("Sir, this will cost too much time");
-                } catch (TuesdayExceptions.DeadlineMissingByDateException e) {
-                    tuesdayPrint("Sir, the deadline date is missing");
                 }
                 input = sc.nextLine();
             }
