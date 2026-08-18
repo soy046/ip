@@ -14,10 +14,13 @@ public class Tuesday {
     public static boolean isAvailableMark(String s, int count) {
         Scanner scMark = new Scanner(s);
 
-        if (scMark.hasNext() && scMark.next().equals("mark")) {
-            if (scMark.hasNextInt()) {
-                int target = scMark.nextInt();
-                return !scMark.hasNext() && target <= count && target > 0;
+        if (scMark.hasNext()) {
+            String command = scMark.next();
+            if (command.equals("mark") || command.equals("unmark")) {
+                if (scMark.hasNextInt()) {
+                    int target = scMark.nextInt();
+                    return !scMark.hasNext() && target <= count && target > 0;
+                }
             }
             return false;
         } else {
@@ -32,11 +35,16 @@ public class Tuesday {
      */
     public static void markProcess(String s, Task[] tasks) {
         Scanner sc = new Scanner(s);
-        sc.next();
+        String command = sc.next();
         int target = sc.nextInt();
         System.out.println(Strings.horizontalLine);
-        System.out.println(Strings.mark);
-        tasks[target - 1].mark();
+        if (command.equals("mark")) {
+            System.out.println(Strings.mark);
+            tasks[target - 1].mark();
+        } else {
+            System.out.println(Strings.unmark);
+            tasks[target - 1].unMark();
+        }
         System.out.println("  " + tasks[target - 1].toString());
         System.out.println(Strings.horizontalLine);
     }
