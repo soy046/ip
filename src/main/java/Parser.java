@@ -36,7 +36,8 @@ public class Parser {
      * @param input the complete line entered by the user
      * @return true if the input is a valid todo, deadline, or event command
      */
-    public static boolean isAvailableTaskCommand(String input) throws TuesdayExceptions.NoDescriptionnException {
+    public static boolean isAvailableTaskCommand(String input) throws TuesdayExceptions.NoDescriptionnException,
+    TuesdayExceptions.DeadlineMissingByDateException{
         return switch (getCommand(input)) {
         case TODO -> hasDescription(input, "todo");
         case DEADLINE -> isValidDeadline(input);
@@ -85,13 +86,14 @@ public class Parser {
     /**
      * Checks that a deadline has exactly one non-empty /by section.
      */
-    private static boolean isValidDeadline(String input) {
+    private static boolean isValidDeadline(String input) throws TuesdayExceptions.DeadlineMissingByDateException {
         String details = input.trim().substring("deadline".length()).trim();
         int byIndex = details.indexOf("/by");
 
-        return byIndex > 0
-                && countOccurrences(details, "/by") == 1
-                && !details.substring(byIndex + 3).trim().isEmpty()
+        if (byIndex <= 0 || details.substring(byIndex + 3).trim().isEmpty()) {
+            throw new TuesdayExceptions.DeadlineMissingByDateException("");
+        }
+        return countOccurrences(details, "/by") == 1
                 && !details.substring(byIndex + 3).contains("/");
     }
 

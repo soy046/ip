@@ -19,4 +19,10 @@ public class TuesdayExceptions {
             super(message);
         }
     }
+
+    public static class DeadlineMissingByDateException extends Exception {
+        public DeadlineMissingByDateException(String message) {
+            super(message);
+        }
+    }
 }
