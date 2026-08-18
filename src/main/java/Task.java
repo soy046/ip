@@ -3,7 +3,7 @@
  */
 public class Task {
     private boolean isDone;
-    private String name;
+    private final String name;
 
     /**
      * Constructor for a task
