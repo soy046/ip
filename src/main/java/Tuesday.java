@@ -14,9 +14,12 @@ public class Tuesday {
      * @throws TuesdayExceptions.NoDescriptionnException if a todo has no description
      */
     public static boolean commandProcess(String input, Task[] tasks, int taskCount)
-            throws TuesdayExceptions.NoDescriptionnException {
+            throws TuesdayExceptions.NoDescriptionnException, TuesdayExceptions.UnknownCommandException {
         Command command = Parser.getCommand(input);
 
+        if (command == Command.UNKNOWN) {
+            throw new TuesdayExceptions.UnknownCommandException(input);
+        }
         // process mark command
         if (command == Command.MARK || command == Command.UNMARK) {
             if (!Parser.isAvailableMark(input, taskCount)) {
@@ -110,24 +113,23 @@ public class Tuesday {
             // process mark, unmark, todo, deadline, and event commands
             } else if (command == Command.MARK || command == Command.UNMARK
                     || command == Command.TODO || command == Command.DEADLINE
-                    || command == Command.EVENT) {
+                    || command == Command.EVENT || command == Command.UNKNOWN) {
                 try {
                     if (commandProcess(input, taskArray, taskCount)) {
                         taskCount++;
                     }
                 } catch (TuesdayExceptions.NoDescriptionnException e) {
-                    System.out.println(e.getMessage());
+                    System.out.println(Strings.horizontalLine);
+                    System.out.println("please add description, sir!");
+                    System.out.println(Strings.horizontalLine);
+                } catch (TuesdayExceptions.UnknownCommandException e) {
+                    System.out.println(Strings.horizontalLine);
+                    System.out.println("Sir, what do you mean by " + e.getMessage());
+                    System.out.println(Strings.horizontalLine);
                 }
                 input = sc.nextLine();
                 continue;
             }
-            // task adding part
-            taskArray[taskCount] = new Task(input);
-            taskCount++;
-            System.out.println(Strings.horizontalLine);
-            System.out.println("added: " + input);
-            System.out.println(Strings.horizontalLine);
-            input = sc.nextLine();
         }
 
         // farewell part
