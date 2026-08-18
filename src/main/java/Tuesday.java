@@ -27,7 +27,9 @@ public class Tuesday {
     public static int commandProcess(String input, ArrayList<Task> tasks, int taskCount)
             throws TuesdayExceptions.NoDescriptionnException, TuesdayExceptions.UnknownCommandException,
             TuesdayExceptions.TaskNumberOutRangeException, TuesdayExceptions.DeadlineMissingByDateException,
-            TuesdayExceptions.EventMissingTimeException {
+            TuesdayExceptions.EventMissingTimeException,
+            TuesdayExceptions.MarkTaskNumberOutOfRangeException,
+            TuesdayExceptions.DeleteTaskNumberOutOfRangeException {
         Command command = Parser.getCommand(input);
 
         if (command == Command.UNKNOWN) {
@@ -146,6 +148,10 @@ public class Tuesday {
                     tuesdayPrint("please add a deadline date, sir!");
                 } catch (TuesdayExceptions.EventMissingTimeException e) {
                     tuesdayPrint("please add both starting and ending times, sir!");
+                } catch (TuesdayExceptions.MarkTaskNumberOutOfRangeException e) {
+                    tuesdayPrint("Sir, that mark number is out of range.");
+                } catch (TuesdayExceptions.DeleteTaskNumberOutOfRangeException e) {
+                    tuesdayPrint("Sir, that delete number is out of range.");
                 } catch (TuesdayExceptions.UnknownCommandException e) {
                     tuesdayPrint("Sir, what do you mean by " + e.getMessage());
                 } catch (TuesdayExceptions.TaskNumberOutRangeException e) {

@@ -20,6 +20,18 @@ public class TuesdayExceptions {
         }
     }
 
+    public static class MarkTaskNumberOutOfRangeException extends Exception {
+        public MarkTaskNumberOutOfRangeException(String message) {
+            super(message);
+        }
+    }
+
+    public static class DeleteTaskNumberOutOfRangeException extends Exception {
+        public DeleteTaskNumberOutOfRangeException(String message) {
+            super(message);
+        }
+    }
+
     public static class DeadlineMissingByDateException extends Exception {
         public DeadlineMissingByDateException(String message) {
             super(message);

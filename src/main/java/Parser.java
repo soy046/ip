@@ -42,7 +42,7 @@ public class Parser {
             TuesdayExceptions.DeadlineMissingByDateException,
             TuesdayExceptions.EventMissingTimeException {
         return switch (getCommand(input)) {
-        case TODO -> hasDescription(input, "todo");
+        case TODO -> hasDescription(input);
         case DEADLINE -> isValidDeadline(input);
         case EVENT -> isValidEvent(input);
         default -> false;
@@ -56,7 +56,8 @@ public class Parser {
      * @param taskCount the number of tasks currently stored
      * @return true if the command refers to an existing task
      */
-    public static boolean isAvailableMark(String input, int taskCount) {
+    public static boolean isAvailableMark(String input, int taskCount)
+            throws TuesdayExceptions.MarkTaskNumberOutOfRangeException {
         Scanner scanner = new Scanner(input);
 
         if (!scanner.hasNext()) {
@@ -73,7 +74,10 @@ public class Parser {
         }
 
         int target = scanner.nextInt();
-        return !scanner.hasNext() && target > 0 && target <= taskCount;
+        if (target <= 0 || target > taskCount) {
+            throw new TuesdayExceptions.MarkTaskNumberOutOfRangeException(String.valueOf(target));
+        }
+        return !scanner.hasNext();
     }
 
     /**
@@ -83,7 +87,8 @@ public class Parser {
      * @param taskCount the number of tasks currently stored
      * @return true if the command refers to an existing task
      */
-    public static boolean isAvailableDelete(String input, int taskCount) {
+    public static boolean isAvailableDelete(String input, int taskCount)
+            throws TuesdayExceptions.DeleteTaskNumberOutOfRangeException {
         Scanner scanner = new Scanner(input);
 
         if (!scanner.hasNext() || getCommand(scanner.next()) != Command.DELETE
@@ -92,14 +97,17 @@ public class Parser {
         }
 
         int target = scanner.nextInt();
-        return !scanner.hasNext() && target > 0 && target <= taskCount;
+        if (target <= 0 || target > taskCount) {
+            throw new TuesdayExceptions.DeleteTaskNumberOutOfRangeException(String.valueOf(target));
+        }
+        return !scanner.hasNext();
     }
 
     /**
      * Checks that a todo command has text after the command word.
      */
-    private static boolean hasDescription(String input, String command) throws TuesdayExceptions.NoDescriptionnException {
-        if (input.trim().length() <= command.length()) {
+    private static boolean hasDescription(String input) throws TuesdayExceptions.NoDescriptionnException {
+        if (input.trim().length() <= "todo".length()) {
             throw new TuesdayExceptions.NoDescriptionnException("todo");
         }
         return true;
