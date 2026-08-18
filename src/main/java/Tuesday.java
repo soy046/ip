@@ -5,29 +5,6 @@ import java.util.Scanner;
  */
 public class Tuesday {
     /**
-     * Check if the input string is an available mark or unmark command
-     * @param s input string
-     * @param count the number of tasks in the task array
-     * @return a boolean value that indicates whether the string is available
-     */
-    public static boolean isAvailableMark(String s, int count) {
-        Scanner scMark = new Scanner(s);
-
-        if (scMark.hasNext()) {
-            String command = scMark.next();
-            if (command.equals("mark") || command.equals("unmark")) {
-                if (scMark.hasNextInt()) {
-                    int target = scMark.nextInt();
-                    return !scMark.hasNext() && target <= count && target > 0;
-                }
-            }
-            return false;
-        } else {
-            return false;
-        }
-    }
-
-    /**
      *  Display the correct sentences and mark the task as done or unmark the task as not done
      * @param s the mark command for processing
      * @param tasks the tasks array's reference
@@ -46,6 +23,51 @@ public class Tuesday {
         }
         System.out.println("  " + tasks[target - 1].toString());
         System.out.println(Strings.horizontalLine);
+    }
+
+    /**
+     * Parses a validated task command, stores the resulting task, and prints
+     * a confirmation message.
+     *
+     * @param input the task command entered by the user
+     * @param tasks the task array in which to store the new task
+     * @param taskCount the number of tasks currently stored
+     */
+    public static boolean taskCommandProcess(String input, Task[] tasks, int taskCount) {
+        if (taskCount >= tasks.length) {
+            return false;
+        }
+
+        String command = Parser.getTaskCommand(input);
+        String trimmedInput = input.trim();
+        Task task;
+
+        if (command.equals("todo")) {
+            String description = trimmedInput.substring("todo".length()).trim();
+            task = new Todo(description);
+        } else if (command.equals("deadline")) {
+            String details = trimmedInput.substring("deadline".length()).trim();
+            int byIndex = details.indexOf("/by");
+            String description = details.substring(0, byIndex).trim();
+            String by = details.substring(byIndex + 3).trim();
+            task = new Deadline(description, by);
+        } else {
+            String details = trimmedInput.substring("event".length()).trim();
+            int fromIndex = details.indexOf("/from");
+            int toIndex = details.indexOf("/to");
+            String description = details.substring(0, fromIndex).trim();
+            String from = details.substring(fromIndex + 5, toIndex).trim();
+            String to = details.substring(toIndex + 3).trim();
+            task = new Event(description, from, to);
+        }
+
+        tasks[taskCount] = task;
+        System.out.println(Strings.horizontalLine);
+        System.out.println("Got it. I've added this task:");
+        System.out.println("  " + task);
+        System.out.println("Now you have " + (taskCount + 1) + " tasks in the list.");
+        System.out.println(Strings.horizontalLine);
+        return true;
     }
     /**
      * Starts the chatbot, store tasks and process the user input
@@ -79,8 +101,14 @@ public class Tuesday {
                 input = sc.nextLine();
                 continue;
             // process the mark command
-            } else if (isAvailableMark(input, taskCount)) {
+            } else if (Parser.isAvailableMark(input, taskCount)) {
                 markProcess(input, taskArray);
+                input = sc.nextLine();
+                continue;
+            } else if (Parser.isAvailableTaskCommand(input)) {
+                if (taskCommandProcess(input, taskArray, taskCount)) {
+                    taskCount++;
+                }
                 input = sc.nextLine();
                 continue;
             }
