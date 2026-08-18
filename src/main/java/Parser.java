@@ -8,20 +8,25 @@ public class Parser {
      * Identifies the task-creation command at the start of an input line.
      *
      * @param input the complete line entered by the user
-     * @return "todo", "deadline", or "event" for a matching command;
-     *         otherwise an empty string
+     * @return the matching command, or UNKNOWN when it is not recognised
      */
-    public static String getTaskCommand(String input) {
+    public static Command getCommand(String input) {
         if (input == null || input.trim().isEmpty()) {
-            return "";
+            return Command.UNKNOWN;
         }
 
         String trimmedInput = input.trim();
         String command = trimmedInput.split("\\s+", 2)[0];
 
         return switch (command) {
-        case "todo", "deadline", "event" -> command;
-        default -> "";
+        case "todo" -> Command.TODO;
+        case "deadline" -> Command.DEADLINE;
+        case "event" -> Command.EVENT;
+        case "list" -> Command.LIST;
+        case "mark" -> Command.MARK;
+        case "unmark" -> Command.UNMARK;
+        case "bye" -> Command.BYE;
+        default -> Command.UNKNOWN;
         };
     }
 
@@ -32,10 +37,10 @@ public class Parser {
      * @return true if the input is a valid todo, deadline, or event command
      */
     public static boolean isAvailableTaskCommand(String input) {
-        return switch (getTaskCommand(input)) {
-        case "todo" -> hasDescription(input, "todo");
-        case "deadline" -> isValidDeadline(input);
-        case "event" -> isValidEvent(input);
+        return switch (getCommand(input)) {
+        case TODO -> hasDescription(input, "todo");
+        case DEADLINE -> isValidDeadline(input);
+        case EVENT -> isValidEvent(input);
         default -> false;
         };
     }
@@ -54,8 +59,8 @@ public class Parser {
             return false;
         }
 
-        String command = scanner.next();
-        if (!command.equals("mark") && !command.equals("unmark")) {
+        Command command = getCommand(scanner.next());
+        if (command != Command.MARK && command != Command.UNMARK) {
             return false;
         }
 

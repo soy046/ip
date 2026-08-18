@@ -11,10 +11,10 @@ public class Tuesday {
      */
     public static void markProcess(String s, Task[] tasks) {
         Scanner sc = new Scanner(s);
-        String command = sc.next();
+        Command command = Parser.getCommand(sc.next());
         int target = sc.nextInt();
         System.out.println(Strings.horizontalLine);
-        if (command.equals("mark")) {
+        if (command == Command.MARK) {
             System.out.println(Strings.mark);
             tasks[target - 1].mark();
         } else {
@@ -38,14 +38,14 @@ public class Tuesday {
             return false;
         }
 
-        String command = Parser.getTaskCommand(input);
+        Command command = Parser.getCommand(input);
         String trimmedInput = input.trim();
         Task task;
 
-        if (command.equals("todo")) {
+        if (command == Command.TODO) {
             String description = trimmedInput.substring("todo".length()).trim();
             task = new Todo(description);
-        } else if (command.equals("deadline")) {
+        } else if (command == Command.DEADLINE) {
             String details = trimmedInput.substring("deadline".length()).trim();
             int byIndex = details.indexOf("/by");
             String description = details.substring(0, byIndex).trim();
@@ -89,9 +89,10 @@ public class Tuesday {
 
         // task adding part and tasks listing part
         input = sc.nextLine();
-        while (! input.equals("bye")) {
+        while (Parser.getCommand(input) != Command.BYE) {
+            Command command = Parser.getCommand(input);
             // task listing part
-            if (input.equals("list")) {
+            if (command == Command.LIST) {
                 System.out.println(Strings.horizontalLine);
                 System.out.println(Strings.showList);
                 for (int i = 1; i < taskCount + 1; i++) {
@@ -105,6 +106,7 @@ public class Tuesday {
                 markProcess(input, taskArray);
                 input = sc.nextLine();
                 continue;
+            // process the task commands
             } else if (Parser.isAvailableTaskCommand(input)) {
                 if (taskCommandProcess(input, taskArray, taskCount)) {
                     taskCount++;
