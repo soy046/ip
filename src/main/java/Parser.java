@@ -38,7 +38,8 @@ public class Parser {
      */
     public static boolean isAvailableTaskCommand(String input)
             throws TuesdayExceptions.NoDescriptionnException,
-            TuesdayExceptions.DeadlineMissingByDateException {
+            TuesdayExceptions.DeadlineMissingByDateException,
+            TuesdayExceptions.EventMissingTimeException {
         return switch (getCommand(input)) {
         case TODO -> hasDescription(input, "todo");
         case DEADLINE -> isValidDeadline(input);
@@ -107,7 +108,9 @@ public class Parser {
     /**
      * Checks that an event has exactly one /from section and one /to section.
      */
-    private static boolean isValidEvent(String input) throws TuesdayExceptions.NoDescriptionnException {
+    private static boolean isValidEvent(String input)
+            throws TuesdayExceptions.NoDescriptionnException,
+            TuesdayExceptions.EventMissingTimeException {
         String details = input.trim().substring("event".length()).trim();
         int fromIndex = details.indexOf("/from");
         int toIndex = details.indexOf("/to");
@@ -116,13 +119,15 @@ public class Parser {
             throw new TuesdayExceptions.NoDescriptionnException("event");
         }
 
-        return fromIndex > 0
-                && toIndex > fromIndex
-                && countOccurrences(details, "/from") == 1
-                && countOccurrences(details, "/to") == 1
-                && !details.substring(fromIndex + 5, toIndex).trim().isEmpty()
-                && !details.substring(fromIndex + 5, toIndex).contains("/")
-                && !details.substring(toIndex + 3).trim().isEmpty()
+        if (fromIndex < 0 || toIndex < 0 || toIndex <= fromIndex
+                || countOccurrences(details, "/from") != 1
+                || countOccurrences(details, "/to") != 1
+                || details.substring(fromIndex + 5, toIndex).trim().isEmpty()
+                || details.substring(toIndex + 3).trim().isEmpty()) {
+            throw new TuesdayExceptions.EventMissingTimeException("event");
+        }
+
+        return !details.substring(fromIndex + 5, toIndex).contains("/")
                 && !details.substring(toIndex + 3).contains("/");
     }
 

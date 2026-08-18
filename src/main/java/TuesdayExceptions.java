@@ -25,4 +25,10 @@ public class TuesdayExceptions {
             super(message);
         }
     }
+
+    public static class EventMissingTimeException extends Exception {
+        public EventMissingTimeException(String message) {
+            super(message);
+        }
+    }
 }
