@@ -1,4 +1,3 @@
-import java.time.chrono.MinguoDate;
 import java.util.Scanner;
 
 /**
