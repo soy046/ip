@@ -13,7 +13,7 @@ public class Tuesday {
         // initialize the input, scanner and the task array with the index for input
         Scanner sc = new Scanner(System.in);
         String input = "";
-        String[] taskArray = new String[100];
+        Task[] taskArray = new Task[100];
         int taskCount = 0;
 
         // greetings part
@@ -29,14 +29,14 @@ public class Tuesday {
             if (input.equals("list")) {
                 System.out.println(Strings.horizontalLine);
                 for (int i = 1; i < taskCount + 1; i++) {
-                    System.out.println(i + ". " + taskArray[i - 1]);
+                    System.out.println(i + "." + taskArray[i - 1].toString());
                 }
                 System.out.println(Strings.horizontalLine);
                 input = sc.nextLine();
                 continue;
             }
             // task adding part
-            taskArray[taskCount] = input;
+            taskArray[taskCount] = new Task(input);
             taskCount++;
             System.out.println(Strings.horizontalLine);
             System.out.println("added: " + input);
