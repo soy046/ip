@@ -13,4 +13,10 @@ public class TuesdayExceptions {
             super(message);
         }
     }
+
+    public static class TaskNumberOutRangeException extends Exception {
+        public TaskNumberOutRangeException(String message) {
+            super(message);
+        }
+    }
 }

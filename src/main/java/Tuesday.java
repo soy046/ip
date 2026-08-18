@@ -5,6 +5,16 @@ import java.util.Scanner;
  */
 public class Tuesday {
     /**
+     *  a method for Tuesday to print
+     * @param message a string about what Tuesday say
+     */
+    public static void tuesdayPrint(String message) {
+        System.out.println(Strings.horizontalLine);
+        System.out.println(message);
+        System.out.println(Strings.horizontalLine);
+    }
+
+    /**
      * Processes a valid mark, unmark, todo, deadline, or event command.
      *
      * @param input the command entered by the user
@@ -14,7 +24,8 @@ public class Tuesday {
      * @throws TuesdayExceptions.NoDescriptionnException if a todo has no description
      */
     public static boolean commandProcess(String input, Task[] tasks, int taskCount)
-            throws TuesdayExceptions.NoDescriptionnException, TuesdayExceptions.UnknownCommandException {
+            throws TuesdayExceptions.NoDescriptionnException, TuesdayExceptions.UnknownCommandException,
+            TuesdayExceptions.TaskNumberOutRangeException {
         Command command = Parser.getCommand(input);
 
         if (command == Command.UNKNOWN) {
@@ -31,21 +42,22 @@ public class Tuesday {
             int target = scanner.nextInt();
             Task task = tasks[target - 1];
 
-            System.out.println(Strings.horizontalLine);
             if (command == Command.MARK) {
-                System.out.println(Strings.mark);
                 task.mark();
+                tuesdayPrint(Strings.mark + "\n  " + task);
             } else {
-                System.out.println(Strings.unmark);
                 task.unMark();
+                tuesdayPrint(Strings.unmark + "\n  " + task);
             }
-            System.out.println("  " + task);
-            System.out.println(Strings.horizontalLine);
             return false;
         }
 
-        if (!Parser.isAvailableTaskCommand(input) || taskCount >= tasks.length) {
+        if (!Parser.isAvailableTaskCommand(input)) {
             return false;
+        }
+
+        if (taskCount >= tasks.length) {
+            throw new TuesdayExceptions.TaskNumberOutRangeException("");
         }
 
         String trimmedInput = input.trim();
@@ -71,11 +83,9 @@ public class Tuesday {
         }
 
         tasks[taskCount] = task;
-        System.out.println(Strings.horizontalLine);
-        System.out.println("Got it. I've added this task:");
-        System.out.println("  " + task);
-        System.out.println("Now you have " + (taskCount + 1) + " tasks in the list.");
-        System.out.println(Strings.horizontalLine);
+        tuesdayPrint("Got it. I've added this task:\n"
+                + "  " + task + "\n"
+                + "Now you have " + (taskCount + 1) + " tasks in the list.");
         return true;
     }
     /**
@@ -91,10 +101,7 @@ public class Tuesday {
         int taskCount = 0;
 
         // greetings part
-        System.out.println(Strings.horizontalLine);
-        System.out.println(Strings.banner);
-        System.out.println(Strings.greeting);
-        System.out.println(Strings.horizontalLine);
+        tuesdayPrint(Strings.banner + "\n" + Strings.greeting);
 
         // task adding part and tasks listing part
         input = sc.nextLine();
@@ -102,12 +109,11 @@ public class Tuesday {
             Command command = Parser.getCommand(input);
             // task listing part
             if (command == Command.LIST) {
-                System.out.println(Strings.horizontalLine);
-                System.out.println(Strings.showList);
+                StringBuilder taskList = new StringBuilder(Strings.showList);
                 for (int i = 1; i < taskCount + 1; i++) {
-                    System.out.println(i + "." + taskArray[i - 1].toString());
+                    taskList.append("\n").append(i).append(".").append(taskArray[i - 1]);
                 }
-                System.out.println(Strings.horizontalLine);
+                tuesdayPrint(taskList.toString());
                 input = sc.nextLine();
                 continue;
             // process mark, unmark, todo, deadline, and event commands
@@ -119,13 +125,11 @@ public class Tuesday {
                         taskCount++;
                     }
                 } catch (TuesdayExceptions.NoDescriptionnException e) {
-                    System.out.println(Strings.horizontalLine);
-                    System.out.println("please add description, sir!");
-                    System.out.println(Strings.horizontalLine);
+                    tuesdayPrint("please add description, sir!");
                 } catch (TuesdayExceptions.UnknownCommandException e) {
-                    System.out.println(Strings.horizontalLine);
-                    System.out.println("Sir, what do you mean by " + e.getMessage());
-                    System.out.println(Strings.horizontalLine);
+                    tuesdayPrint("Sir, what do you mean by " + e.getMessage());
+                } catch (TuesdayExceptions.TaskNumberOutRangeException e) {
+                    tuesdayPrint("Sir, this will cost too much time");
                 }
                 input = sc.nextLine();
                 continue;
@@ -133,8 +137,6 @@ public class Tuesday {
         }
 
         // farewell part
-        System.out.println(Strings.horizontalLine);
-        System.out.println(Strings.farewell);
-        System.out.println(Strings.horizontalLine);
+        tuesdayPrint(Strings.farewell);
     }
 }
