@@ -1,3 +1,6 @@
+/**
+ *  Stores all the default strings needed
+ */
 public class Strings {
     public static final String banner = " _____                     _             \n"
             + "|_   _|                   | |            \n"
