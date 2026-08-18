@@ -6,7 +6,7 @@ import java.util.Scanner;
  */
 public class Tuesday {
     /**
-     * Check if the input string is an available mark command
+     * Check if the input string is an available mark or unmark command
      * @param s input string
      * @param count the number of tasks in the task array
      * @return a boolean value that indicates whether the string is available
@@ -29,7 +29,7 @@ public class Tuesday {
     }
 
     /**
-     *  Display the correct sentences and mark the task as done
+     *  Display the correct sentences and mark the task as done or unmark the task as not done
      * @param s the mark command for processing
      * @param tasks the tasks array's reference
      */
@@ -72,6 +72,7 @@ public class Tuesday {
             // task listing part
             if (input.equals("list")) {
                 System.out.println(Strings.horizontalLine);
+                System.out.println(Strings.showList);
                 for (int i = 1; i < taskCount + 1; i++) {
                     System.out.println(i + "." + taskArray[i - 1].toString());
                 }

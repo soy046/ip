@@ -16,4 +16,5 @@ public class Strings {
     public static final String horizontalLine = "____________________________________________________________";
     public static final String mark = "Nice! I've marked this task as done:";
     public static final String unmark = "OK, I've marked this task as not done yet:";
+    public static final String showList = "Here are the tasks in your list:";
 }
