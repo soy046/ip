@@ -14,4 +14,5 @@ public class Strings {
             "What can I do for you?";
     public static final String farewell = "Bye. Hope to see you again soon!";
     public static final String horizontalLine = "____________________________________________________________";
+    public static final String mark = "Nice! I've marked this task as done:";
 }

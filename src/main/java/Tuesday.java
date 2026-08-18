@@ -1,9 +1,45 @@
+import java.time.chrono.MinguoDate;
 import java.util.Scanner;
 
 /**
- * Runs the chat bot
+ * Runs the chatbot
  */
 public class Tuesday {
+    /**
+     * Check if the input string is an available mark command
+     * @param s input string
+     * @param count the number of tasks in the task array
+     * @return a boolean value that indicates whether the string is available
+     */
+    public static boolean isAvailableMark(String s, int count) {
+        Scanner scMark = new Scanner(s);
+
+        if (scMark.hasNext() && scMark.next().equals("mark")) {
+            if (scMark.hasNextInt()) {
+                int target = scMark.nextInt();
+                return !scMark.hasNext() && target <= count && target > 0;
+            }
+            return false;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     *  Display the correct sentences and mark the task as done
+     * @param s the mark command for processing
+     * @param tasks the tasks array's reference
+     */
+    public static void markProcess(String s, Task[] tasks) {
+        Scanner sc = new Scanner(s);
+        sc.next();
+        int target = sc.nextInt();
+        System.out.println(Strings.horizontalLine);
+        System.out.println(Strings.mark);
+        tasks[target - 1].mark();
+        System.out.println("  " + tasks[target - 1].toString());
+        System.out.println(Strings.horizontalLine);
+    }
     /**
      * Starts the chatbot, store tasks and process the user input
      *
@@ -32,6 +68,11 @@ public class Tuesday {
                     System.out.println(i + "." + taskArray[i - 1].toString());
                 }
                 System.out.println(Strings.horizontalLine);
+                input = sc.nextLine();
+                continue;
+            // process the mark command
+            } else if (isAvailableMark(input, taskCount)) {
+                markProcess(input, taskArray);
                 input = sc.nextLine();
                 continue;
             }
