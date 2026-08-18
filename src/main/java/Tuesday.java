@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.Scanner;
 
 /**
@@ -15,15 +16,15 @@ public class Tuesday {
     }
 
     /**
-     * Processes a valid mark, unmark, todo, deadline, or event command.
+     * Processes a valid mark, unmark, delete, todo, deadline, or event command.
      *
      * @param input the command entered by the user
      * @param tasks the task array
      * @param taskCount the number of tasks currently stored
-     * @return true if a new task was added, otherwise false
+     * @return 1 if a task was added, -1 if a task was deleted, otherwise 0
      * @throws TuesdayExceptions.NoDescriptionnException if a todo has no description
      */
-    public static boolean commandProcess(String input, Task[] tasks, int taskCount)
+    public static int commandProcess(String input, ArrayList<Task> tasks, int taskCount)
             throws TuesdayExceptions.NoDescriptionnException, TuesdayExceptions.UnknownCommandException,
             TuesdayExceptions.TaskNumberOutRangeException, TuesdayExceptions.DeadlineMissingByDateException,
             TuesdayExceptions.EventMissingTimeException {
@@ -32,6 +33,23 @@ public class Tuesday {
         if (command == Command.UNKNOWN) {
             throw new TuesdayExceptions.UnknownCommandException(input);
         }
+
+        if (command == Command.DELETE) {
+            if (!Parser.isAvailableDelete(input, taskCount)) {
+                throw new TuesdayExceptions.UnknownCommandException(input);
+            }
+
+            Scanner scanner = new Scanner(input);
+            scanner.next();
+            int target = scanner.nextInt();
+            Task removedTask = tasks.remove(target - 1);
+
+            tuesdayPrint("Noted. I've removed this task:\n"
+                    + "  " + removedTask + "\n"
+                    + "Now you have " + (taskCount - 1) + " tasks in the list.");
+            return -1;
+        }
+
         // process mark command
         if (command == Command.MARK || command == Command.UNMARK) {
             if (!Parser.isAvailableMark(input, taskCount)) {
@@ -41,7 +59,7 @@ public class Tuesday {
             Scanner scanner = new Scanner(input);
             scanner.next();
             int target = scanner.nextInt();
-            Task task = tasks[target - 1];
+            Task task = tasks.get(target - 1);
 
             if (command == Command.MARK) {
                 task.mark();
@@ -50,14 +68,14 @@ public class Tuesday {
                 task.unMark();
                 tuesdayPrint(Strings.unmark + "\n  " + task);
             }
-            return false;
+            return 0;
         }
 
         if (!Parser.isAvailableTaskCommand(input)) {
             throw new TuesdayExceptions.UnknownCommandException(input);
         }
 
-        if (taskCount >= tasks.length) {
+        if (taskCount >= 100) {
             throw new TuesdayExceptions.TaskNumberOutRangeException("");
         }
 
@@ -83,11 +101,11 @@ public class Tuesday {
             task = new Event(description, from, to);
         }
 
-        tasks[taskCount] = task;
+        tasks.add(task);
         tuesdayPrint("Got it. I've added this task:\n"
                 + "  " + task + "\n"
                 + "Now you have " + (taskCount + 1) + " tasks in the list.");
-        return true;
+        return 1;
     }
     /**
      * Starts the chatbot, store tasks and process the user input
@@ -98,7 +116,7 @@ public class Tuesday {
         // initialize the input, scanner and the task array with the index for input
         Scanner sc = new Scanner(System.in);
         String input = "";
-        Task[] taskArray = new Task[100];
+        ArrayList<Task> taskArray = new ArrayList<>();
         int taskCount = 0;
 
         // greetings part
@@ -112,18 +130,16 @@ public class Tuesday {
             if (command == Command.LIST) {
                 StringBuilder taskList = new StringBuilder(Strings.showList);
                 for (int i = 1; i < taskCount + 1; i++) {
-                    taskList.append("\n").append(i).append(".").append(taskArray[i - 1]);
+                    taskList.append("\n").append(i).append(".").append(taskArray.get(i - 1));
                 }
                 tuesdayPrint(taskList.toString());
                 input = sc.nextLine();
             // process mark, unmark, todo, deadline, and event commands
             } else if (command == Command.MARK || command == Command.UNMARK
-                    || command == Command.TODO || command == Command.DEADLINE
+                    || command == Command.DELETE || command == Command.TODO || command == Command.DEADLINE
                     || command == Command.EVENT || command == Command.UNKNOWN) {
                 try {
-                    if (commandProcess(input, taskArray, taskCount)) {
-                        taskCount++;
-                    }
+                    taskCount += commandProcess(input, taskArray, taskCount);
                 } catch (TuesdayExceptions.NoDescriptionnException e) {
                     tuesdayPrint("please add description, sir!");
                 } catch (TuesdayExceptions.DeadlineMissingByDateException e) {

@@ -25,6 +25,7 @@ public class Parser {
         case "list" -> Command.LIST;
         case "mark" -> Command.MARK;
         case "unmark" -> Command.UNMARK;
+        case "delete" -> Command.DELETE;
         case "bye" -> Command.BYE;
         default -> Command.UNKNOWN;
         };
@@ -68,6 +69,25 @@ public class Parser {
         }
 
         if (!scanner.hasNextInt()) {
+            return false;
+        }
+
+        int target = scanner.nextInt();
+        return !scanner.hasNext() && target > 0 && target <= taskCount;
+    }
+
+    /**
+     * Checks whether a delete command refers to an existing task.
+     *
+     * @param input the complete line entered by the user
+     * @param taskCount the number of tasks currently stored
+     * @return true if the command refers to an existing task
+     */
+    public static boolean isAvailableDelete(String input, int taskCount) {
+        Scanner scanner = new Scanner(input);
+
+        if (!scanner.hasNext() || getCommand(scanner.next()) != Command.DELETE
+                || !scanner.hasNextInt()) {
             return false;
         }
 
