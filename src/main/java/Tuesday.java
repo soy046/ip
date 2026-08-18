@@ -5,40 +5,46 @@ import java.util.Scanner;
  */
 public class Tuesday {
     /**
-     *  Display the correct sentences and mark the task as done or unmark the task as not done
-     * @param s the mark command for processing
-     * @param tasks the tasks array's reference
-     */
-    public static void markProcess(String s, Task[] tasks) {
-        Scanner sc = new Scanner(s);
-        Command command = Parser.getCommand(sc.next());
-        int target = sc.nextInt();
-        System.out.println(Strings.horizontalLine);
-        if (command == Command.MARK) {
-            System.out.println(Strings.mark);
-            tasks[target - 1].mark();
-        } else {
-            System.out.println(Strings.unmark);
-            tasks[target - 1].unMark();
-        }
-        System.out.println("  " + tasks[target - 1].toString());
-        System.out.println(Strings.horizontalLine);
-    }
-
-    /**
-     * Parses a validated task command, stores the resulting task, and prints
-     * a confirmation message.
+     * Processes a valid mark, unmark, todo, deadline, or event command.
      *
-     * @param input the task command entered by the user
-     * @param tasks the task array in which to store the new task
+     * @param input the command entered by the user
+     * @param tasks the task array
      * @param taskCount the number of tasks currently stored
+     * @return true if a new task was added, otherwise false
+     * @throws TuesdayExceptions.NoDescriptionnException if a todo has no description
      */
-    public static boolean taskCommandProcess(String input, Task[] tasks, int taskCount) {
-        if (taskCount >= tasks.length) {
+    public static boolean commandProcess(String input, Task[] tasks, int taskCount)
+            throws TuesdayExceptions.NoDescriptionnException {
+        Command command = Parser.getCommand(input);
+
+        // process mark command
+        if (command == Command.MARK || command == Command.UNMARK) {
+            if (!Parser.isAvailableMark(input, taskCount)) {
+                return false;
+            }
+
+            Scanner scanner = new Scanner(input);
+            scanner.next();
+            int target = scanner.nextInt();
+            Task task = tasks[target - 1];
+
+            System.out.println(Strings.horizontalLine);
+            if (command == Command.MARK) {
+                System.out.println(Strings.mark);
+                task.mark();
+            } else {
+                System.out.println(Strings.unmark);
+                task.unMark();
+            }
+            System.out.println("  " + task);
+            System.out.println(Strings.horizontalLine);
             return false;
         }
 
-        Command command = Parser.getCommand(input);
+        if (!Parser.isAvailableTaskCommand(input) || taskCount >= tasks.length) {
+            return false;
+        }
+
         String trimmedInput = input.trim();
         Task task;
 
@@ -101,15 +107,16 @@ public class Tuesday {
                 System.out.println(Strings.horizontalLine);
                 input = sc.nextLine();
                 continue;
-            // process the mark command
-            } else if (Parser.isAvailableMark(input, taskCount)) {
-                markProcess(input, taskArray);
-                input = sc.nextLine();
-                continue;
-            // process the task commands
-            } else if (Parser.isAvailableTaskCommand(input)) {
-                if (taskCommandProcess(input, taskArray, taskCount)) {
-                    taskCount++;
+            // process mark, unmark, todo, deadline, and event commands
+            } else if (command == Command.MARK || command == Command.UNMARK
+                    || command == Command.TODO || command == Command.DEADLINE
+                    || command == Command.EVENT) {
+                try {
+                    if (commandProcess(input, taskArray, taskCount)) {
+                        taskCount++;
+                    }
+                } catch (TuesdayExceptions.NoDescriptionnException e) {
+                    System.out.println(e.getMessage());
                 }
                 input = sc.nextLine();
                 continue;

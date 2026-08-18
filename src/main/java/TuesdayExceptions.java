@@ -1,3 +1,7 @@
-public class TuesdayExceptions extends Exception{
-
+public class TuesdayExceptions {
+    public static class NoDescriptionnException extends Exception {
+        public NoDescriptionnException(String message) {
+            super(message);
+        }
+    }
 }

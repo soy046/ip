@@ -36,7 +36,7 @@ public class Parser {
      * @param input the complete line entered by the user
      * @return true if the input is a valid todo, deadline, or event command
      */
-    public static boolean isAvailableTaskCommand(String input) {
+    public static boolean isAvailableTaskCommand(String input) throws TuesdayExceptions.NoDescriptionnException {
         return switch (getCommand(input)) {
         case TODO -> hasDescription(input, "todo");
         case DEADLINE -> isValidDeadline(input);
@@ -75,8 +75,11 @@ public class Parser {
     /**
      * Checks that a todo command has text after the command word.
      */
-    private static boolean hasDescription(String input, String command) {
-        return input.trim().length() > command.length();
+    private static boolean hasDescription(String input, String command) throws TuesdayExceptions.NoDescriptionnException {
+        if (input.trim().length() <= command.length()) {
+            throw new TuesdayExceptions.NoDescriptionnException("todo");
+        }
+        return true;
     }
 
     /**
