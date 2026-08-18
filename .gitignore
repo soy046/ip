@@ -16,5 +16,8 @@ bin/
 # Temp files
 _temp/
 
+# Java class files
+*.class
+
 /text-ui-test/ACTUAL.TXT
 text-ui-test/EXPECTED-UNIX.TXT
