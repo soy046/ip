@@ -1,3 +1,4 @@
+package Exceptions;
 /**
  *  A class with all the exceptions for Tuesday nested
  */

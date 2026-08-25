@@ -1,3 +1,5 @@
+package UI;
+
 /**
  *  Stores all the default strings needed
  */
