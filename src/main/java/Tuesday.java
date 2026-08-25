@@ -1,6 +1,5 @@
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Scanner;
 
@@ -104,15 +103,17 @@ public class Tuesday {
             String details = trimmedInput.substring("deadline".length()).trim();
             int byIndex = details.indexOf("/by");
             String description = details.substring(0, byIndex).trim();
-            LocalDate by = LocalDate.parse(details.substring(byIndex + 3).trim());
-            task = new Deadline(description, by);
+            Event.DateTimeValue by = Parser.parseDateTime(details.substring(byIndex + 3).trim());
+            task = new Deadline(description, by.date(), by.time());
         } else {
             String details = trimmedInput.substring("event".length()).trim();
             int fromIndex = details.indexOf("/from");
             int toIndex = details.indexOf("/to");
             String description = details.substring(0, fromIndex).trim();
-            String from = details.substring(fromIndex + 5, toIndex).trim();
-            String to = details.substring(toIndex + 3).trim();
+            Event.DateTimeValue from = Parser.parseDateTime(
+                    details.substring(fromIndex + 5, toIndex).trim());
+            Event.DateTimeValue to = Parser.parseDateTime(
+                    details.substring(toIndex + 3).trim());
             task = new Event(description, from, to);
         }
 
