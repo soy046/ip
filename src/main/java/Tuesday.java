@@ -1,3 +1,4 @@
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Scanner;
 
@@ -103,6 +104,11 @@ public class Tuesday {
             task = new Event(description, from, to);
         }
 
+        try {
+            DataSave.saveNewData(DataSave.FILE_PATH, task.toString());
+        } catch (IOException e) {
+            tuesdayPrint("Unable to create the file, Sir");
+        }
         tasks.add(task);
         tuesdayPrint("Got it. I've added this task:\n"
                 + "  " + task + "\n"
