@@ -1,3 +1,4 @@
+import javax.xml.crypto.Data;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Scanner;
@@ -46,7 +47,11 @@ public class Tuesday {
             scanner.next();
             int target = scanner.nextInt();
             Task removedTask = tasks.remove(target - 1);
-
+            try {
+                DataSave.modifyData(DataSave.FILE_PATH, tasks, taskCount - 1);
+            } catch (IOException e) {
+                 tuesdayPrint("Failed to save data! Unable to create the save file, Sir!");
+            }
             tuesdayPrint("Noted. I've removed this task:\n"
                     + "  " + removedTask + "\n"
                     + "Now you have " + (taskCount - 1) + " tasks in the list.");
@@ -70,6 +75,12 @@ public class Tuesday {
             } else {
                 task.unMark();
                 tuesdayPrint(Strings.unmark + "\n  " + task);
+            }
+
+            try {
+                DataSave.modifyData(DataSave.FILE_PATH, tasks, taskCount);
+            } catch (IOException e) {
+                tuesdayPrint("Failed to save data! Unable to create the file, Sir!");
             }
             return 0;
         }
@@ -107,7 +118,7 @@ public class Tuesday {
         try {
             DataSave.saveNewData(DataSave.FILE_PATH, task.toString());
         } catch (IOException e) {
-            tuesdayPrint("Unable to create the file, Sir");
+            tuesdayPrint("Failed to save data! Unable to create the file, Sir");
         }
         tasks.add(task);
         tuesdayPrint("Got it. I've added this task:\n"
