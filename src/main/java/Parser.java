@@ -1,5 +1,7 @@
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Scanner;
 
@@ -132,8 +134,14 @@ public class Parser {
         if (byIndex <= 0 || details.substring(byIndex + 3).trim().isEmpty()) {
             throw new TuesdayExceptions.DeadlineMissingByDateException("");
         }
+        String deadline = details.substring(byIndex + 3).trim();
+        try {
+            LocalDate.parse(deadline);
+        } catch (DateTimeParseException e) {
+            throw new TuesdayExceptions.DeadlineMissingByDateException(deadline);
+        }
         return countOccurrences(details, "/by") == 1
-                && !details.substring(byIndex + 3).contains("/");
+                && !deadline.contains("/");
     }
 
     /**
@@ -245,11 +253,20 @@ public class Parser {
             }
 
             String description = details.substring(0, markerIndex);
-            String deadline = details.substring(markerIndex + marker.length(), details.length() - 1);
-            if (description.isEmpty() || deadline.isEmpty()) {
+            String deadlineText = details.substring(markerIndex + marker.length(), details.length() - 1);
+            if (description.isEmpty() || deadlineText.isEmpty()) {
                 return null;
             }
-            task = new Deadline(description, deadline);
+            try {
+                task = new Deadline(description,
+                        LocalDate.parse(deadlineText, Deadline.DISPLAY_FORMATTER));
+            } catch (DateTimeParseException e) {
+                try {
+                    task = new Deadline(description, LocalDate.parse(deadlineText));
+                } catch (DateTimeParseException ignored) {
+                    return null;
+                }
+            }
         } else if (type == 'E') {
             String fromMarker = " (from: ";
             String toMarker = " to: ";
