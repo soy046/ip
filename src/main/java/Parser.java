@@ -1,5 +1,8 @@
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Scanner;
 
@@ -132,8 +135,12 @@ public class Parser {
         if (byIndex <= 0 || details.substring(byIndex + 3).trim().isEmpty()) {
             throw new TuesdayExceptions.DeadlineMissingByDateException("");
         }
+        String deadline = details.substring(byIndex + 3).trim();
+        if (parseDateTime(deadline) == null) {
+            throw new TuesdayExceptions.DeadlineMissingByDateException(deadline);
+        }
         return countOccurrences(details, "/by") == 1
-                && !details.substring(byIndex + 3).contains("/");
+                && !deadline.contains("/");
     }
 
     /**
@@ -158,8 +165,10 @@ public class Parser {
             throw new TuesdayExceptions.EventMissingTimeException("event");
         }
 
-        return !details.substring(fromIndex + 5, toIndex).contains("/")
-                && !details.substring(toIndex + 3).contains("/");
+        String startTime = details.substring(fromIndex + 5, toIndex).trim();
+        String endTime = details.substring(toIndex + 3).trim();
+        return !startTime.contains("/") && !endTime.contains("/")
+                && parseDateTime(startTime) != null && parseDateTime(endTime) != null;
     }
 
     /**
@@ -175,6 +184,85 @@ public class Parser {
         }
 
         return count;
+    }
+
+    /**
+     * Checks whether a value is an ISO date.
+     */
+    private static boolean isDate(String value) {
+        if (!value.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            return false;
+        }
+        try {
+            LocalDate.parse(value);
+            return true;
+        } catch (DateTimeParseException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Checks whether a value is an ISO time.
+     */
+    private static boolean isTime(String value) {
+        if (!value.matches("\\d{2}:\\d{2}")) {
+            return false;
+        }
+        try {
+            LocalTime.parse(value);
+            return true;
+        } catch (DateTimeParseException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Parses an input date-time value. It accepts a date, a time, or both.
+     *
+     * @param value an ISO date, ISO time, or ISO date followed by a time
+     * @return the parsed date-time components, or null if invalid
+     */
+    public static Event.DateTimeValue parseDateTime(String value) {
+        if (isDate(value)) {
+            return new Event.DateTimeValue(LocalDate.parse(value), null);
+        }
+        if (isTime(value)) {
+            return new Event.DateTimeValue(null, LocalTime.parse(value));
+        }
+
+        String[] parts = value.split(" ", -1);
+        if (parts.length == 2 && isDate(parts[0]) && isTime(parts[1])) {
+            return new Event.DateTimeValue(
+                    LocalDate.parse(parts[0]), LocalTime.parse(parts[1]));
+        }
+        return null;
+    }
+
+    /**
+     * Parses a date-time value stored in the task file's display format.
+     */
+    private static Event.DateTimeValue parseSavedDateTime(String value) {
+        try {
+            return new Event.DateTimeValue(
+                    LocalDate.parse(value, Event.DATE_FORMATTER), null);
+        } catch (DateTimeParseException dateException) {
+            try {
+                return new Event.DateTimeValue(
+                        null, LocalTime.parse(value, Event.TIME_FORMATTER));
+            } catch (DateTimeParseException timeException) {
+                int separator = value.lastIndexOf(' ');
+                if (separator <= 0) {
+                    return null;
+                }
+                try {
+                    return new Event.DateTimeValue(
+                            LocalDate.parse(value.substring(0, separator), Event.DATE_FORMATTER),
+                            LocalTime.parse(value.substring(separator + 1), Event.TIME_FORMATTER));
+                } catch (DateTimeParseException combinedException) {
+                    return null;
+                }
+            }
+        }
     }
 
     /**
@@ -245,11 +333,15 @@ public class Parser {
             }
 
             String description = details.substring(0, markerIndex);
-            String deadline = details.substring(markerIndex + marker.length(), details.length() - 1);
-            if (description.isEmpty() || deadline.isEmpty()) {
+            String deadlineText = details.substring(markerIndex + marker.length(), details.length() - 1);
+            if (description.isEmpty() || deadlineText.isEmpty()) {
                 return null;
             }
-            task = new Deadline(description, deadline);
+            Event.DateTimeValue deadline = parseSavedDateTime(deadlineText);
+            if (deadline == null) {
+                return null;
+            }
+            task = new Deadline(description, deadline.date(), deadline.time());
         } else if (type == 'E') {
             String fromMarker = " (from: ";
             String toMarker = " to: ";
@@ -261,12 +353,17 @@ public class Parser {
             }
 
             String description = details.substring(0, fromIndex);
-            String startTime = details.substring(fromIndex + fromMarker.length(), toIndex);
-            String endTime = details.substring(toIndex + toMarker.length(), details.length() - 1);
-            if (description.isEmpty() || startTime.isEmpty() || endTime.isEmpty()) {
+            String startTimeText = details.substring(fromIndex + fromMarker.length(), toIndex);
+            String endTimeText = details.substring(toIndex + toMarker.length(), details.length() - 1);
+            if (description.isEmpty() || startTimeText.isEmpty() || endTimeText.isEmpty()) {
                 return null;
             }
-            task = new Event(description, startTime, endTime);
+            Event.DateTimeValue start = parseSavedDateTime(startTimeText);
+            Event.DateTimeValue end = parseSavedDateTime(endTimeText);
+            if (start == null || end == null) {
+                return null;
+            }
+            task = new Event(description, start, end);
         } else {
             return null;
         }
