@@ -1,13 +1,13 @@
-package Processor;
+package processor;
 
-import Exceptions.TuesdayExceptions;
-import Task.Deadline;
-import Task.Event;
-import Task.Task;
-import Task.TaskList;
-import Task.Todo;
-import UI.Strings;
-import UI.UI;
+import exceptions.TuesdayExceptions;
+import task.Deadline;
+import task.Event;
+import task.Task;
+import task.TaskList;
+import task.Todo;
+import ui.Strings;
+import ui.UI;
 
 import java.io.IOException;
 import java.io.File;

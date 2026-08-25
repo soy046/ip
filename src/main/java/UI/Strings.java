@@ -1,4 +1,4 @@
-package UI;
+package ui;
 
 /**
  *  Stores all the default strings needed

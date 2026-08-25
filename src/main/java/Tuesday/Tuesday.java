@@ -1,6 +1,6 @@
-package Tuesday;
+package tuesday;
 
-import UI.UI;
+import ui.UI;
 
 /**
  * Runs the chatbot

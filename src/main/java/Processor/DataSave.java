@@ -1,6 +1,6 @@
-package Processor;
+package processor;
 
-import Task.TaskList;
+import task.TaskList;
 
 import java.io.FileWriter;
 import java.io.IOException;

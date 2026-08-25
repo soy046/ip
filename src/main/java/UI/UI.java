@@ -1,10 +1,10 @@
-package UI;
+package ui;
 
-import Exceptions.TuesdayExceptions;
-import Processor.Command;
-import Processor.DataSave;
-import Processor.Parser;
-import Task.TaskList;
+import exceptions.TuesdayExceptions;
+import processor.Command;
+import processor.DataSave;
+import processor.Parser;
+import task.TaskList;
 
 import java.io.FileNotFoundException;
 import java.util.Scanner;
