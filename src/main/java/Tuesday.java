@@ -1,4 +1,5 @@
 import javax.xml.crypto.Data;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Scanner;
@@ -136,7 +137,13 @@ public class Tuesday {
         Scanner sc = new Scanner(System.in);
         String input = "";
         ArrayList<Task> taskArray = new ArrayList<>();
-        int taskCount = 0;
+        int taskCount;
+        try {
+            taskCount = Parser.loadData(DataSave.FILE_PATH, taskArray);
+        } catch (FileNotFoundException e) {
+            taskCount = 0;
+        }
+
 
         // greetings part
         tuesdayPrint(Strings.banner + "\n" + Strings.greeting);

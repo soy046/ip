@@ -1,3 +1,6 @@
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.Scanner;
 
 /**
@@ -172,5 +175,105 @@ public class Parser {
         }
 
         return count;
+    }
+
+    /**
+     * Loads saved tasks from a file into an ArrayList. And will skip the line which is not a valid Task
+     *
+     * @param filePath the path of the saved task file
+     * @param tasks the list to which loaded tasks are added
+     * @return the number of valid tasks loaded
+     * @throws FileNotFoundException if the save file cannot be found
+     */
+    public static int loadData(String filePath, ArrayList<Task> tasks)
+            throws FileNotFoundException {
+        int taskCount = 0;
+
+        try (Scanner scanner = new Scanner(new File(filePath))) {
+            while (scanner.hasNextLine()) {
+                Task task = toTask(scanner.nextLine());
+                if (task != null) {
+                    tasks.add(task);
+                    taskCount++;
+                }
+            }
+        }
+
+        return taskCount;
+    }
+
+    /**
+     * Converts a saved task string back into its corresponding task object.
+     *
+     * @param taskData the saved string representation of a task
+     * @return the reconstructed task, or null if the saved text is invalid
+     */
+    private static Task toTask(String taskData) {
+        if (taskData == null || taskData.trim().length() < 8) {
+            return null;
+        }
+
+        String data = taskData.trim();
+        if (data.charAt(0) != '[' || data.charAt(2) != ']'
+                || data.charAt(3) != '[' || data.charAt(5) != ']'
+                || data.charAt(6) != ' ') {
+            return null;
+        }
+
+        char type = data.charAt(1);
+        char status = data.charAt(4);
+        boolean isDone;
+
+        if (status == 'X') {
+            isDone = true;
+        } else if (status == ' ') {
+            isDone = false;
+        } else {
+            return null;
+        }
+
+        String details = data.substring(7);
+        Task task;
+
+        if (type == 'T') {
+            task = new Todo(details);
+        } else if (type == 'D') {
+            String marker = " (by: ";
+            int markerIndex = details.lastIndexOf(marker);
+            if (markerIndex < 0 || !details.endsWith(")")) {
+                return null;
+            }
+
+            String description = details.substring(0, markerIndex);
+            String deadline = details.substring(markerIndex + marker.length(), details.length() - 1);
+            if (description.isEmpty() || deadline.isEmpty()) {
+                return null;
+            }
+            task = new Deadline(description, deadline);
+        } else if (type == 'E') {
+            String fromMarker = " (from: ";
+            String toMarker = " to: ";
+            int fromIndex = details.indexOf(fromMarker);
+            int toIndex = details.lastIndexOf(toMarker);
+
+            if (fromIndex < 0 || toIndex <= fromIndex || !details.endsWith(")")) {
+                return null;
+            }
+
+            String description = details.substring(0, fromIndex);
+            String startTime = details.substring(fromIndex + fromMarker.length(), toIndex);
+            String endTime = details.substring(toIndex + toMarker.length(), details.length() - 1);
+            if (description.isEmpty() || startTime.isEmpty() || endTime.isEmpty()) {
+                return null;
+            }
+            task = new Event(description, startTime, endTime);
+        } else {
+            return null;
+        }
+
+        if (isDone) {
+            task.mark();
+        }
+        return task;
     }
 }
