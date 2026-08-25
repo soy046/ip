@@ -8,7 +8,7 @@ import java.util.ArrayList;
  */
 public class DataSave {
 
-    public static final String FILE_PATH = "data/Tuesday.txt";
+    public static final String FILE_PATH = "data" + File.pathSeparator + "Tuesday.txt";
 
     /**
      *  A method for Tuesday to save the newly entered data.
