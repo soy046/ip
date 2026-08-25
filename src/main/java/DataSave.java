@@ -1,7 +1,6 @@
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.File;
-import java.util.ArrayList;
 
 /**
  *  This is a class with the method for saving data.
@@ -39,7 +38,7 @@ public class DataSave {
      * @param taskCount the number of tasks in the ArrayList
      * @throws IOException indicate that the file cannot be created at the certain location
      */
-    public static void modifyData(String filePath, ArrayList<Task> tasks, int taskCount) throws IOException {
+    public static void modifyData(String filePath, TaskList tasks, int taskCount) throws IOException {
         File file = new File(filePath);
         File parent = file.getParentFile();
 

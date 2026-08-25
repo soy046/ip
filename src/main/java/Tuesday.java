@@ -1,6 +1,5 @@
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Scanner;
 
 /**
@@ -26,7 +25,7 @@ public class Tuesday {
      * @return 1 if a task was added, -1 if a task was deleted, otherwise 0
      * @throws TuesdayExceptions.NoDescriptionnException if a todo has no description
      */
-    public static int commandProcess(String input, ArrayList<Task> tasks, int taskCount)
+    public static int commandProcess(String input, TaskList tasks, int taskCount)
             throws TuesdayExceptions.NoDescriptionnException, TuesdayExceptions.UnknownCommandException,
             TuesdayExceptions.TaskNumberOutRangeException, TuesdayExceptions.DeadlineMissingByDateException,
             TuesdayExceptions.EventMissingTimeException,
@@ -137,7 +136,7 @@ public class Tuesday {
         // initialize the input, scanner and the task array with the index for input
         Scanner sc = new Scanner(System.in);
         String input = "";
-        ArrayList<Task> taskArray = new ArrayList<>();
+        TaskList taskArray = new TaskList();
         int taskCount;
         try {
             taskCount = Parser.loadData(DataSave.FILE_PATH, taskArray);

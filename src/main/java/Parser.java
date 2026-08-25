@@ -3,7 +3,6 @@ import java.io.FileNotFoundException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
 import java.util.Scanner;
 
 /**
@@ -273,7 +272,7 @@ public class Parser {
      * @return the number of valid tasks loaded
      * @throws FileNotFoundException if the save file cannot be found
      */
-    public static int loadData(String filePath, ArrayList<Task> tasks)
+    public static int loadData(String filePath, TaskList tasks)
             throws FileNotFoundException {
         int taskCount = 0;
 
