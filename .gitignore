@@ -19,5 +19,8 @@ _temp/
 # Java class files
 *.class
 
+# Local data file
+/data/
+
 /text-ui-test/ACTUAL.TXT
 text-ui-test/EXPECTED-UNIX.TXT
