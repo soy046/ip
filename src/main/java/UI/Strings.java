@@ -1,10 +1,11 @@
 package ui;
 
 /**
- *  Stores all the default strings needed
+ * Stores the default strings used by the application.
  */
 public class Strings {
-    public static final String banner = " _____                     _             \n"
+    /** Displays the application banner. */
+    public static final String BANNER = " _____                     _             \n"
             + "|_   _|                   | |            \n"
             + "  | | _   _  ___  ___   __| | __ _ _   _\n"
             + "  | || | | |/ _ \\/ __| / _` |/ _` | | | |\n"
@@ -12,11 +13,17 @@ public class Strings {
             + "  |_| \\__,_|\\___||___/ \\__,_|\\__,_|\\__, |\n"
             + "                                     __/ |\n"
             + "                                    |___/";
-    public static final String greeting = "Hello! I'm Tuesday.\n" +
+    /** Displays the greeting shown at startup. */
+    public static final String GREETING = "Hello! I'm Tuesday.\n" +
             "What can I do for you?";
-    public static final String farewell = "Bye. Hope to see you again soon!";
-    public static final String horizontalLine = "____________________________________________________________";
-    public static final String mark = "Nice! I've marked this task as done:";
-    public static final String unmark = "OK, I've marked this task as not done yet:";
-    public static final String showList = "Here are the tasks in your list:";
+    /** Displays the farewell shown when the application exits. */
+    public static final String FAREWELL = "Bye. Hope to see you again soon!";
+    /** Separates sections of terminal output. */
+    public static final String HORIZONTAL_LINE = "____________________________________________________________";
+    /** Displays the confirmation for marking a task. */
+    public static final String MARK = "Nice! I've marked this task as done:";
+    /** Displays the confirmation for unmarking a task. */
+    public static final String UNMARK = "OK, I've marked this task as not done yet:";
+    /** Displays the heading for the task list. */
+    public static final String SHOW_LIST = "Here are the tasks in your list:";
 }

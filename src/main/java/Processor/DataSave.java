@@ -11,6 +11,7 @@ import task.TaskList;
  */
 public class DataSave {
 
+    /** Stores the path used for the task save file. */
     public static final String FILE_PATH = "data" + File.separator + "Tuesday.txt";
 
     /**

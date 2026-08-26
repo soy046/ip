@@ -8,33 +8,29 @@ public class Task {
     private final String name;
 
     /**
-     * Constructor for a task
+     * Creates a task.
      *
-     * @param name： the name of the task
+     * @param name the name of the task.
      */
     public Task(String name) {
         this.name = name;
         this.isDone = false;
     }
 
-    /**
-     * Mark the task as done
-     */
+    /** Marks the task as done. */
     public void mark() {
         this.isDone = true;
     }
 
-    /**
-     * Unmark the task as not done
-     */
+    /** Marks the task as not done. */
     public void unMark() {
         this.isDone = false;
     }
 
     /**
-     * Give the Task object string representation for both cases
+     * Returns the task's string representation.
      *
-     * @return Task object's string representation
+     * @return the task's string representation.
      */
     @Override
     public String toString() {

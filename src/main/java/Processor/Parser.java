@@ -438,10 +438,10 @@ public class Parser {
 
             if (command == Command.MARK) {
                 task.mark();
-                Ui.tuesdayPrint(Strings.mark + "\n  " + task);
+                Ui.tuesdayPrint(Strings.MARK + "\n  " + task);
             } else {
                 task.unMark();
-                Ui.tuesdayPrint(Strings.unmark + "\n  " + task);
+                Ui.tuesdayPrint(Strings.UNMARK + "\n  " + task);
             }
 
             try {

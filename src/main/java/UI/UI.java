@@ -19,9 +19,9 @@ public class Ui {
      * @param message the message to display
      */
     public static void tuesdayPrint(String message) {
-        System.out.println(Strings.horizontalLine);
+        System.out.println(Strings.HORIZONTAL_LINE);
         System.out.println(message);
-        System.out.println(Strings.horizontalLine);
+        System.out.println(Strings.HORIZONTAL_LINE);
     }
 
     /**
@@ -38,14 +38,14 @@ public class Ui {
             taskCount = 0;
         }
 
-        tuesdayPrint(Strings.banner + "\n" + Strings.greeting);
+        tuesdayPrint(Strings.BANNER + "\n" + Strings.GREETING);
 
         String input = scanner.nextLine();
         while (Parser.getCommand(input) != Command.BYE) {
             Command command = Parser.getCommand(input);
 
             if (command == Command.LIST) {
-                StringBuilder taskOutput = new StringBuilder(Strings.showList);
+                StringBuilder taskOutput = new StringBuilder(Strings.SHOW_LIST);
                 for (int i = 1; i <= taskCount; i++) {
                     taskOutput.append("\n").append(i).append(".").append(taskList.get(i - 1));
                 }
@@ -76,6 +76,6 @@ public class Ui {
             input = scanner.nextLine();
         }
 
-        tuesdayPrint(Strings.farewell);
+        tuesdayPrint(Strings.FAREWELL);
     }
 }
