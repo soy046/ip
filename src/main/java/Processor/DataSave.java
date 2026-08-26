@@ -1,22 +1,24 @@
 package processor;
 
-import task.TaskList;
-
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.File;
+
+import task.TaskList;
 
 /**
- *  This is a class with the method for saving data.
+ * This is a class with the method for saving data.
  */
 public class DataSave {
 
+    /** Stores the path used for the task save file. */
     public static final String FILE_PATH = "data" + File.separator + "Tuesday.txt";
 
     /**
-     *  A method for Tuesday to save the newly entered data.
+     * A method for Tuesday to save the newly entered data.
+     *
      * @param filePath the path of the file which saves data.
-     * @param data newly added data
+     * @param data     newly added data
      * @throws IOException indicate that the file cannot be created.
      */
     public static void saveNewData(String filePath, String data) throws IOException {
@@ -37,8 +39,9 @@ public class DataSave {
 
     /**
      * This method is used for modifying the data saved
-     * @param filePath the location of the file saving data
-     * @param tasks an ArrayList which stores the data temporarily
+     *
+     * @param filePath  the location of the file saving data
+     * @param tasks     an ArrayList which stores the data temporarily
      * @param taskCount the number of tasks in the ArrayList
      * @throws IOException indicate that the file cannot be created at the certain location
      */
