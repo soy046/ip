@@ -1,5 +1,7 @@
 package task;
 
+import java.util.Locale;
+
 /**
  * Represents a task entered by the user and whether it has been completed.
  */
@@ -25,6 +27,16 @@ public class Task {
     /** Marks the task as not done. */
     public void unMark() {
         this.isDone = false;
+    }
+
+    /**
+     * Checks whether the task description contains a keyword.
+     *
+     * @param keyword the keyword to search for.
+     * @return true if the description contains the keyword, ignoring case.
+     */
+    public boolean matchesDescription(String keyword) {
+        return this.name.toLowerCase(Locale.ROOT).contains(keyword.toLowerCase(Locale.ROOT));
     }
 
     /**

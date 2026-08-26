@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
+import java.util.Locale;
 import java.util.Scanner;
 
 import exceptions.TuesdayExceptions;
@@ -16,6 +17,7 @@ import task.TaskList;
 import task.Todo;
 import ui.Strings;
 import ui.Ui;
+
 
 /**
  * Provides methods for recognising and validating chatbot commands.
@@ -40,6 +42,7 @@ public class Parser {
             case "deadline" -> Command.DEADLINE;
             case "event" -> Command.EVENT;
             case "list" -> Command.LIST;
+            case "find" -> Command.FIND;
             case "mark" -> Command.MARK;
             case "unmark" -> Command.UNMARK;
             case "delete" -> Command.DELETE;
