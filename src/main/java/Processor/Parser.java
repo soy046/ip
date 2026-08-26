@@ -1,5 +1,13 @@
 package processor;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
+import java.util.Scanner;
+
 import exceptions.TuesdayExceptions;
 import task.Deadline;
 import task.Event;
@@ -8,14 +16,6 @@ import task.TaskList;
 import task.Todo;
 import ui.Strings;
 import ui.UI;
-
-import java.io.IOException;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.format.DateTimeParseException;
-import java.util.Scanner;
 
 /**
  * Provides methods for recognising and validating chatbot commands.
@@ -36,15 +36,15 @@ public class Parser {
         String command = trimmedInput.split("\\s+", 2)[0];
 
         return switch (command) {
-        case "todo" -> Command.TODO;
-        case "deadline" -> Command.DEADLINE;
-        case "event" -> Command.EVENT;
-        case "list" -> Command.LIST;
-        case "mark" -> Command.MARK;
-        case "unmark" -> Command.UNMARK;
-        case "delete" -> Command.DELETE;
-        case "bye" -> Command.BYE;
-        default -> Command.UNKNOWN;
+            case "todo" -> Command.TODO;
+            case "deadline" -> Command.DEADLINE;
+            case "event" -> Command.EVENT;
+            case "list" -> Command.LIST;
+            case "mark" -> Command.MARK;
+            case "unmark" -> Command.UNMARK;
+            case "delete" -> Command.DELETE;
+            case "bye" -> Command.BYE;
+            default -> Command.UNKNOWN;
         };
     }
 
@@ -59,17 +59,17 @@ public class Parser {
             TuesdayExceptions.DeadlineMissingByDateException,
             TuesdayExceptions.EventMissingTimeException {
         return switch (getCommand(input)) {
-        case TODO -> hasDescription(input);
-        case DEADLINE -> isValidDeadline(input);
-        case EVENT -> isValidEvent(input);
-        default -> false;
+            case TODO -> hasDescription(input);
+            case DEADLINE -> isValidDeadline(input);
+            case EVENT -> isValidEvent(input);
+            default -> false;
         };
     }
 
     /**
      * Checks whether the input is a valid mark or unmark command.
      *
-     * @param input the complete line entered by the user
+     * @param input     the complete line entered by the user
      * @param taskCount the number of tasks currently stored
      * @return true if the command refers to an existing task
      */
@@ -100,7 +100,7 @@ public class Parser {
     /**
      * Checks whether a delete command refers to an existing task.
      *
-     * @param input the complete line entered by the user
+     * @param input     the complete line entered by the user
      * @param taskCount the number of tasks currently stored
      * @return true if the command refers to an existing task
      */
@@ -280,7 +280,7 @@ public class Parser {
      * Loads saved tasks from a file into an ArrayList. And will skip the line which is not a valid Task
      *
      * @param filePath the path of the saved task file
-     * @param tasks the list to which loaded tasks are added
+     * @param tasks    the list to which loaded tasks are added
      * @return the number of valid tasks loaded
      * @throws FileNotFoundException if the save file cannot be found
      */
@@ -388,8 +388,8 @@ public class Parser {
     /**
      * Processes a valid mark, unmark, delete, todo, deadline, or event command.
      *
-     * @param input the command entered by the user
-     * @param tasks the task list
+     * @param input     the command entered by the user
+     * @param tasks     the task list
      * @param taskCount the number of tasks currently stored
      * @return 1 if a task was added, -1 if a task was deleted, otherwise 0
      * @throws TuesdayExceptions.NoDescriptionnException if a todo has no description

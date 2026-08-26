@@ -5,7 +5,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
-public class Deadline extends Task{
+public class Deadline extends Task {
     public static final DateTimeFormatter DATE_FORMATTER =
             DateTimeFormatter.ofPattern("MMM dd yyyy", Locale.ENGLISH);
     public static final DateTimeFormatter TIME_FORMATTER =

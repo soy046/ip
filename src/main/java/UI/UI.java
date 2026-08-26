@@ -1,13 +1,13 @@
 package ui;
 
+import java.io.FileNotFoundException;
+import java.util.Scanner;
+
 import exceptions.TuesdayExceptions;
 import processor.Command;
 import processor.DataSave;
 import processor.Parser;
 import task.TaskList;
-
-import java.io.FileNotFoundException;
-import java.util.Scanner;
 
 /**
  * Handles user interaction for Tuesday.

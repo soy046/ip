@@ -18,14 +18,14 @@ public class Task {
     }
 
     /**
-     *  Mark the task as done
+     * Mark the task as done
      */
     public void mark() {
         this.isDone = true;
     }
 
     /**
-     *  Unmark the task as not done
+     * Unmark the task as not done
      */
     public void unMark() {
         this.isDone = false;

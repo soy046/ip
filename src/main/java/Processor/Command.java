@@ -1,4 +1,5 @@
 package processor;
+
 /**
  * Lists the commands understood by Tuesday.
  */
