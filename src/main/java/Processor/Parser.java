@@ -15,6 +15,7 @@ import java.io.FileNotFoundException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
+import java.util.Locale;
 import java.util.Scanner;
 
 /**
@@ -36,15 +37,16 @@ public class Parser {
         String command = trimmedInput.split("\\s+", 2)[0];
 
         return switch (command) {
-        case "todo" -> Command.TODO;
-        case "deadline" -> Command.DEADLINE;
-        case "event" -> Command.EVENT;
-        case "list" -> Command.LIST;
-        case "mark" -> Command.MARK;
-        case "unmark" -> Command.UNMARK;
-        case "delete" -> Command.DELETE;
-        case "bye" -> Command.BYE;
-        default -> Command.UNKNOWN;
+            case "todo" -> Command.TODO;
+            case "deadline" -> Command.DEADLINE;
+            case "event" -> Command.EVENT;
+            case "list" -> Command.LIST;
+            case "find" -> Command.FIND;
+            case "mark" -> Command.MARK;
+            case "unmark" -> Command.UNMARK;
+            case "delete" -> Command.DELETE;
+            case "bye" -> Command.BYE;
+            default -> Command.UNKNOWN;
         };
     }
 

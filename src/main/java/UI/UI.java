@@ -50,6 +50,21 @@ public class UI {
                     taskOutput.append("\n").append(i).append(".").append(taskList.get(i - 1));
                 }
                 tuesdayPrint(taskOutput.toString());
+            } else if (command == Command.FIND) {
+                String keyword = input.substring("find".length()).trim();
+                if (keyword.isEmpty()) {
+                    tuesdayPrint("Please provide a keyword to find, Sir!");
+                } else {
+                    StringBuilder taskOutput = new StringBuilder(
+                            "Here are the matching tasks in your list:");
+                    for (int i = 0; i < taskCount; i++) {
+                        if (taskList.get(i).matchesDescription(keyword)) {
+                            taskOutput.append("\n").append(i + 1).append(".")
+                                    .append(taskList.get(i));
+                        }
+                    }
+                    tuesdayPrint(taskOutput.toString());
+                }
             } else if (command == Command.MARK || command == Command.UNMARK
                     || command == Command.DELETE || command == Command.TODO
                     || command == Command.DEADLINE || command == Command.EVENT

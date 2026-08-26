@@ -7,6 +7,7 @@ public enum Command {
     DEADLINE,
     EVENT,
     LIST,
+    FIND,
     MARK,
     UNMARK,
     DELETE,
