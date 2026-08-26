@@ -15,7 +15,7 @@ import task.Task;
 import task.TaskList;
 import task.Todo;
 import ui.Strings;
-import ui.UI;
+import ui.Ui;
 
 /**
  * Provides methods for recognising and validating chatbot commands.
@@ -418,9 +418,9 @@ public class Parser {
             try {
                 DataSave.modifyData(DataSave.FILE_PATH, tasks, taskCount - 1);
             } catch (IOException e) {
-                UI.tuesdayPrint("Failed to save data! Unable to create the save file, Sir!");
+                Ui.tuesdayPrint("Failed to save data! Unable to create the save file, Sir!");
             }
-            UI.tuesdayPrint("Noted. I've removed this task:\n"
+            Ui.tuesdayPrint("Noted. I've removed this task:\n"
                     + "  " + removedTask + "\n"
                     + "Now you have " + (taskCount - 1) + " tasks in the list.");
             return -1;
@@ -438,16 +438,16 @@ public class Parser {
 
             if (command == Command.MARK) {
                 task.mark();
-                UI.tuesdayPrint(Strings.mark + "\n  " + task);
+                Ui.tuesdayPrint(Strings.mark + "\n  " + task);
             } else {
                 task.unMark();
-                UI.tuesdayPrint(Strings.unmark + "\n  " + task);
+                Ui.tuesdayPrint(Strings.unmark + "\n  " + task);
             }
 
             try {
                 DataSave.modifyData(DataSave.FILE_PATH, tasks, taskCount);
             } catch (IOException e) {
-                UI.tuesdayPrint("Failed to save data! Unable to create the file, Sir!");
+                Ui.tuesdayPrint("Failed to save data! Unable to create the file, Sir!");
             }
             return 0;
         }
@@ -485,10 +485,10 @@ public class Parser {
         try {
             DataSave.saveNewData(DataSave.FILE_PATH, task.toString());
         } catch (IOException e) {
-            UI.tuesdayPrint("Failed to save data! Unable to create the file, Sir");
+            Ui.tuesdayPrint("Failed to save data! Unable to create the file, Sir");
         }
         tasks.add(task);
-        UI.tuesdayPrint("Got it. I've added this task:\n"
+        Ui.tuesdayPrint("Got it. I've added this task:\n"
                 + "  " + task + "\n"
                 + "Now you have " + (taskCount + 1) + " tasks in the list.");
         return 1;

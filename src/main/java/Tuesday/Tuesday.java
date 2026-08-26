@@ -1,12 +1,12 @@
 package tuesday;
 
-import ui.UI;
+import ui.Ui;
 
 /**
  * Runs the chatbot
  */
 public class Tuesday {
     public static void main(String[] args) {
-        new UI().run();
+        new Ui().run();
     }
 }

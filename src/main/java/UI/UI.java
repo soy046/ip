@@ -12,7 +12,7 @@ import task.TaskList;
 /**
  * Handles user interaction for Tuesday.
  */
-public class UI {
+public class Ui {
     /**
      * Prints a message surrounded by the chatbot's divider lines.
      *
