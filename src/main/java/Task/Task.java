@@ -30,7 +30,6 @@ public class Task {
     }
 
     /**
-<<<<<<< HEAD
      * Checks whether the task description contains a keyword.
      *
      * @param keyword the keyword to search for.
