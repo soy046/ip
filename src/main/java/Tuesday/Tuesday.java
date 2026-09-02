@@ -1,5 +1,6 @@
 package tuesday;
 
+import javafx.application.Application;
 import ui.Ui;
 
 /**
@@ -12,6 +13,7 @@ public class Tuesday {
      * @param args command-line arguments, which are not used.
      */
     public static void main(String[] args) {
-        new Ui().run();
+
+        Application.launch(Ui.class, args);
     }
 }
