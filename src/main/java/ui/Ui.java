@@ -1,8 +1,14 @@
 package ui;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Scanner;
 
+import javafx.application.Application;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Scene;
+import javafx.scene.layout.AnchorPane;
+import javafx.stage.Stage;
 import processor.Command;
 import processor.DataSave;
 import processor.Parser;
@@ -11,7 +17,7 @@ import task.TaskList;
 /**
  * Handles text user interaction for Tuesday.
  */
-public class Ui {
+public class Ui extends Application {
     /**
      * Prints a message surrounded by the chatbot's divider lines.
      *
@@ -46,6 +52,19 @@ public class Ui {
                 break;
             }
             input = scanner.nextLine();
+        }
+    }
+
+    @Override
+    public void start(Stage stage) {
+        try {
+            FXMLLoader fxmlLoader = new FXMLLoader(Ui.class.getResource("/view/MainWindow.fxml"));
+            AnchorPane ap = fxmlLoader.load();
+            Scene scene = new Scene(ap);
+            stage.setScene(scene);
+            stage.show();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }

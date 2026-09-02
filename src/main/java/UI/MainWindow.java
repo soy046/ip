@@ -26,8 +26,8 @@ public class MainWindow extends AnchorPane {
     @FXML
     private Button sendButton;
 
-    private Image tuesdayImage = new Image(this.getClass().getResourceAsStream("images/Tuesday.png"));
-    private Image userImage = new Image(this.getClass().getResourceAsStream("images/TontStark.png"));
+    private Image tuesdayImage = new Image(this.getClass().getResourceAsStream("/images/Tuesday.png"));
+    private Image userImage = new Image(this.getClass().getResourceAsStream("/images/TonyStark.png"));
     private TaskList tasks = new TaskList();
     private int taskCount = 0;
 
@@ -53,7 +53,7 @@ public class MainWindow extends AnchorPane {
         String response = input;
         dialogContainer.getChildren().addAll(
                 DialogBox.getUserDialog(input, userImage),
-                DialogBox.getTuesdayDialog(response, userImage)
+                DialogBox.getTuesdayDialog(response, tuesdayImage)
         );
         userInput.clear();
     }
