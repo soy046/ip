@@ -2,6 +2,8 @@ package ui;
 
 import java.io.FileNotFoundException;
 
+import javafx.animation.PauseTransition;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.ScrollPane;
@@ -9,6 +11,8 @@ import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
+import processor.Command;
 import processor.DataSave;
 import processor.Parser;
 import task.TaskList;
@@ -57,6 +61,12 @@ public class MainWindow extends AnchorPane {
                 DialogBox.getTuesdayDialog(response, tuesdayImage)
         );
         userInput.clear();
+
+        if (Parser.getCommand(input) == Command.BYE) {
+            PauseTransition pause = new PauseTransition(Duration.seconds(2));
+            pause.setOnFinished(event -> Platform.exit());
+            pause.play();
+        }
     }
 
 
