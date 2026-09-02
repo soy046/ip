@@ -15,7 +15,6 @@ import task.Task;
 import task.TaskList;
 import task.Todo;
 import ui.Strings;
-import ui.Ui;
 
 
 /**
@@ -388,20 +387,19 @@ public class Parser {
     }
 
     /**
-     * Processes a command and displays the corresponding response.
+     * Processes a command and returns the corresponding response.
      *
      * @param input     the command entered by the user
      * @param tasks     the task list
      * @param taskCount the number of tasks currently stored
-     * @return 1 if a task was added, -1 if a task was deleted, otherwise 0
+     * @return the response to display to the user
      */
-    public static int commandProcess(String input, TaskList tasks, int taskCount) {
+    public static String commandProcess(String input, TaskList tasks, int taskCount) {
         Command command = getCommand(input);
 
         try {
             if (command == Command.BYE) {
-                Ui.tuesdayPrint(Strings.FAREWELL);
-                return 0;
+                return Strings.FAREWELL;
             }
 
             if (command == Command.LIST) {
@@ -409,14 +407,13 @@ public class Parser {
                 for (int i = 1; i <= taskCount; i++) {
                     taskOutput.append("\n").append(i).append(".").append(tasks.get(i - 1));
                 }
-                Ui.tuesdayPrint(taskOutput.toString());
-                return 0;
+                return taskOutput.toString();
             }
 
             if (command == Command.FIND) {
                 String keyword = input.substring("find".length()).trim();
                 if (keyword.isEmpty()) {
-                    Ui.tuesdayPrint("Please provide a keyword to find, Sir!");
+                    return "Please provide a keyword to find, Sir!";
                 } else {
                     StringBuilder taskOutput = new StringBuilder(
                             "Here are the matching tasks in your list:");
@@ -426,9 +423,8 @@ public class Parser {
                                     .append(tasks.get(i));
                         }
                     }
-                    Ui.tuesdayPrint(taskOutput.toString());
+                    return taskOutput.toString();
                 }
-                return 0;
             }
 
             if (command == Command.UNKNOWN) {
@@ -444,15 +440,15 @@ public class Parser {
                 scanner.next();
                 int target = scanner.nextInt();
                 Task removedTask = tasks.remove(target - 1);
+                String response = "Noted. I've removed this task:\n"
+                        + "  " + removedTask + "\n"
+                        + "Now you have " + (taskCount - 1) + " tasks in the list.";
                 try {
                     DataSave.modifyData(DataSave.FILE_PATH, tasks, taskCount - 1);
                 } catch (IOException e) {
-                    Ui.tuesdayPrint("Failed to save data! Unable to create the save file, Sir!");
+                    response = "Failed to save data! Unable to create the save file, Sir!\n" + response;
                 }
-                Ui.tuesdayPrint("Noted. I've removed this task:\n"
-                        + "  " + removedTask + "\n"
-                        + "Now you have " + (taskCount - 1) + " tasks in the list.");
-                return -1;
+                return response;
             }
 
             if (command == Command.MARK || command == Command.UNMARK) {
@@ -465,20 +461,21 @@ public class Parser {
                 int target = scanner.nextInt();
                 Task task = tasks.get(target - 1);
 
+                String response;
                 if (command == Command.MARK) {
                     task.mark();
-                    Ui.tuesdayPrint(Strings.MARK + "\n  " + task);
+                    response = Strings.MARK + "\n  " + task;
                 } else {
                     task.unMark();
-                    Ui.tuesdayPrint(Strings.UNMARK + "\n  " + task);
+                    response = Strings.UNMARK + "\n  " + task;
                 }
 
                 try {
                     DataSave.modifyData(DataSave.FILE_PATH, tasks, taskCount);
                 } catch (IOException e) {
-                    Ui.tuesdayPrint("Failed to save data! Unable to create the file, Sir!");
+                    response = "Failed to save data! Unable to create the file, Sir!\n" + response;
                 }
-                return 0;
+                return response;
             }
 
             if (!isAvailableTaskCommand(input)) {
@@ -511,31 +508,30 @@ public class Parser {
                 task = new Event(description, from, to);
             }
 
+            String response = "Got it. I've added this task:\n"
+                    + "  " + task + "\n"
+                    + "Now you have " + (taskCount + 1) + " tasks in the list.";
             try {
                 DataSave.saveNewData(DataSave.FILE_PATH, task.toString());
             } catch (IOException e) {
-                Ui.tuesdayPrint("Failed to save data! Unable to create the file, Sir");
+                response = "Failed to save data! Unable to create the file, Sir\n" + response;
             }
             tasks.add(task);
-            Ui.tuesdayPrint("Got it. I've added this task:\n"
-                    + "  " + task + "\n"
-                    + "Now you have " + (taskCount + 1) + " tasks in the list.");
-            return 1;
+            return response;
         } catch (TuesdayExceptions.NoDescriptionnException e) {
-            Ui.tuesdayPrint("please add description, sir!");
+            return "please add description, sir!";
         } catch (TuesdayExceptions.DeadlineMissingByDateException e) {
-            Ui.tuesdayPrint("please add a deadline date, sir!");
+            return "please add a deadline date, sir!";
         } catch (TuesdayExceptions.EventMissingTimeException e) {
-            Ui.tuesdayPrint("please add both starting and ending times, sir!");
+            return "please add both starting and ending times, sir!";
         } catch (TuesdayExceptions.MarkTaskNumberOutOfRangeException e) {
-            Ui.tuesdayPrint("Sir, that mark number is out of range.");
+            return "Sir, that mark number is out of range.";
         } catch (TuesdayExceptions.DeleteTaskNumberOutOfRangeException e) {
-            Ui.tuesdayPrint("Sir, that delete number is out of range.");
+            return "Sir, that delete number is out of range.";
         } catch (TuesdayExceptions.UnknownCommandException e) {
-            Ui.tuesdayPrint("Sir, what do you mean by " + e.getMessage());
+            return "Sir, what do you mean by " + e.getMessage();
         } catch (TuesdayExceptions.TaskNumberOutRangeException e) {
-            Ui.tuesdayPrint("Sir, this will cost too much time");
+            return "Sir, this will cost too much time";
         }
-        return 0;
     }
 }

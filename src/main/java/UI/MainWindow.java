@@ -50,7 +50,8 @@ public class MainWindow extends AnchorPane {
     @FXML
     private void handleUserInput() {
         String input = userInput.getText();
-        String response = input;
+        String response = Parser.commandProcess(input, tasks, taskCount);
+        taskCount = tasks.size();
         dialogContainer.getChildren().addAll(
                 DialogBox.getUserDialog(input, userImage),
                 DialogBox.getTuesdayDialog(response, tuesdayImage)
