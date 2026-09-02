@@ -9,7 +9,7 @@ import processor.Parser;
 import task.TaskList;
 
 /**
- * Handles user interaction for Tuesday.
+ * Handles text user interaction for Tuesday.
  */
 public class Ui {
     /**
