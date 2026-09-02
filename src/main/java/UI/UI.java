@@ -3,7 +3,6 @@ package ui;
 import java.io.FileNotFoundException;
 import java.util.Scanner;
 
-import exceptions.TuesdayExceptions;
 import processor.Command;
 import processor.DataSave;
 import processor.Parser;
@@ -41,56 +40,12 @@ public class Ui {
         tuesdayPrint(Strings.BANNER + "\n" + Strings.GREETING);
 
         String input = scanner.nextLine();
-        while (Parser.getCommand(input) != Command.BYE) {
-            Command command = Parser.getCommand(input);
-
-            if (command == Command.LIST) {
-                StringBuilder taskOutput = new StringBuilder(Strings.SHOW_LIST);
-                for (int i = 1; i <= taskCount; i++) {
-                    taskOutput.append("\n").append(i).append(".").append(taskList.get(i - 1));
-                }
-                tuesdayPrint(taskOutput.toString());
-            } else if (command == Command.FIND) {
-                String keyword = input.substring("find".length()).trim();
-                if (keyword.isEmpty()) {
-                    tuesdayPrint("Please provide a keyword to find, Sir!");
-                } else {
-                    StringBuilder taskOutput = new StringBuilder(
-                            "Here are the matching tasks in your list:");
-                    for (int i = 0; i < taskCount; i++) {
-                        if (taskList.get(i).matchesDescription(keyword)) {
-                            taskOutput.append("\n").append(i + 1).append(".")
-                                    .append(taskList.get(i));
-                        }
-                    }
-                    tuesdayPrint(taskOutput.toString());
-                }
-            } else if (command == Command.MARK || command == Command.UNMARK
-                    || command == Command.DELETE || command == Command.TODO
-                    || command == Command.DEADLINE || command == Command.EVENT
-                    || command == Command.UNKNOWN) {
-                try {
-                    taskCount += Parser.commandProcess(input, taskList, taskCount);
-                } catch (TuesdayExceptions.NoDescriptionnException e) {
-                    tuesdayPrint("please add description, sir!");
-                } catch (TuesdayExceptions.DeadlineMissingByDateException e) {
-                    tuesdayPrint("please add a deadline date, sir!");
-                } catch (TuesdayExceptions.EventMissingTimeException e) {
-                    tuesdayPrint("please add both starting and ending times, sir!");
-                } catch (TuesdayExceptions.MarkTaskNumberOutOfRangeException e) {
-                    tuesdayPrint("Sir, that mark number is out of range.");
-                } catch (TuesdayExceptions.DeleteTaskNumberOutOfRangeException e) {
-                    tuesdayPrint("Sir, that delete number is out of range.");
-                } catch (TuesdayExceptions.UnknownCommandException e) {
-                    tuesdayPrint("Sir, what do you mean by " + e.getMessage());
-                } catch (TuesdayExceptions.TaskNumberOutRangeException e) {
-                    tuesdayPrint("Sir, this will cost too much time");
-                }
+        while (true) {
+            taskCount += Parser.commandProcess(input, taskList, taskCount);
+            if (Parser.getCommand(input) == Command.BYE) {
+                break;
             }
-
             input = scanner.nextLine();
         }
-
-        tuesdayPrint(Strings.FAREWELL);
     }
 }

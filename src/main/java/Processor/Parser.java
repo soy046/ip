@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
-import java.util.Locale;
 import java.util.Scanner;
 
 import exceptions.TuesdayExceptions;
@@ -389,111 +388,154 @@ public class Parser {
     }
 
     /**
-     * Processes a valid mark, unmark, delete, todo, deadline, or event command.
+     * Processes a command and displays the corresponding response.
      *
      * @param input     the command entered by the user
      * @param tasks     the task list
      * @param taskCount the number of tasks currently stored
      * @return 1 if a task was added, -1 if a task was deleted, otherwise 0
-     * @throws TuesdayExceptions.NoDescriptionnException if a todo has no description
      */
-    public static int commandProcess(String input, TaskList tasks, int taskCount)
-            throws TuesdayExceptions.NoDescriptionnException, TuesdayExceptions.UnknownCommandException,
-            TuesdayExceptions.TaskNumberOutRangeException, TuesdayExceptions.DeadlineMissingByDateException,
-            TuesdayExceptions.EventMissingTimeException,
-            TuesdayExceptions.MarkTaskNumberOutOfRangeException,
-            TuesdayExceptions.DeleteTaskNumberOutOfRangeException {
+    public static int commandProcess(String input, TaskList tasks, int taskCount) {
         Command command = getCommand(input);
 
-        if (command == Command.UNKNOWN) {
-            throw new TuesdayExceptions.UnknownCommandException(input);
-        }
-
-        if (command == Command.DELETE) {
-            if (!isAvailableDelete(input, taskCount)) {
-                throw new TuesdayExceptions.UnknownCommandException(input);
-            }
-
-            Scanner scanner = new Scanner(input);
-            scanner.next();
-            int target = scanner.nextInt();
-            Task removedTask = tasks.remove(target - 1);
-            try {
-                DataSave.modifyData(DataSave.FILE_PATH, tasks, taskCount - 1);
-            } catch (IOException e) {
-                Ui.tuesdayPrint("Failed to save data! Unable to create the save file, Sir!");
-            }
-            Ui.tuesdayPrint("Noted. I've removed this task:\n"
-                    + "  " + removedTask + "\n"
-                    + "Now you have " + (taskCount - 1) + " tasks in the list.");
-            return -1;
-        }
-
-        if (command == Command.MARK || command == Command.UNMARK) {
-            if (!isAvailableMark(input, taskCount)) {
-                throw new TuesdayExceptions.UnknownCommandException(input);
-            }
-
-            Scanner scanner = new Scanner(input);
-            scanner.next();
-            int target = scanner.nextInt();
-            Task task = tasks.get(target - 1);
-
-            if (command == Command.MARK) {
-                task.mark();
-                Ui.tuesdayPrint(Strings.MARK + "\n  " + task);
-            } else {
-                task.unMark();
-                Ui.tuesdayPrint(Strings.UNMARK + "\n  " + task);
-            }
-
-            try {
-                DataSave.modifyData(DataSave.FILE_PATH, tasks, taskCount);
-            } catch (IOException e) {
-                Ui.tuesdayPrint("Failed to save data! Unable to create the file, Sir!");
-            }
-            return 0;
-        }
-
-        if (!isAvailableTaskCommand(input)) {
-            throw new TuesdayExceptions.UnknownCommandException(input);
-        }
-
-        if (taskCount >= 100) {
-            throw new TuesdayExceptions.TaskNumberOutRangeException("");
-        }
-
-        String trimmedInput = input.trim();
-        Task task;
-
-        if (command == Command.TODO) {
-            String description = trimmedInput.substring("todo".length()).trim();
-            task = new Todo(description);
-        } else if (command == Command.DEADLINE) {
-            String details = trimmedInput.substring("deadline".length()).trim();
-            int byIndex = details.indexOf("/by");
-            String description = details.substring(0, byIndex).trim();
-            Event.DateTimeValue by = parseDateTime(details.substring(byIndex + 3).trim());
-            task = new Deadline(description, by.date(), by.time());
-        } else {
-            String details = trimmedInput.substring("event".length()).trim();
-            int fromIndex = details.indexOf("/from");
-            int toIndex = details.indexOf("/to");
-            String description = details.substring(0, fromIndex).trim();
-            Event.DateTimeValue from = parseDateTime(details.substring(fromIndex + 5, toIndex).trim());
-            Event.DateTimeValue to = parseDateTime(details.substring(toIndex + 3).trim());
-            task = new Event(description, from, to);
-        }
-
         try {
-            DataSave.saveNewData(DataSave.FILE_PATH, task.toString());
-        } catch (IOException e) {
-            Ui.tuesdayPrint("Failed to save data! Unable to create the file, Sir");
+            if (command == Command.BYE) {
+                Ui.tuesdayPrint(Strings.FAREWELL);
+                return 0;
+            }
+
+            if (command == Command.LIST) {
+                StringBuilder taskOutput = new StringBuilder(Strings.SHOW_LIST);
+                for (int i = 1; i <= taskCount; i++) {
+                    taskOutput.append("\n").append(i).append(".").append(tasks.get(i - 1));
+                }
+                Ui.tuesdayPrint(taskOutput.toString());
+                return 0;
+            }
+
+            if (command == Command.FIND) {
+                String keyword = input.substring("find".length()).trim();
+                if (keyword.isEmpty()) {
+                    Ui.tuesdayPrint("Please provide a keyword to find, Sir!");
+                } else {
+                    StringBuilder taskOutput = new StringBuilder(
+                            "Here are the matching tasks in your list:");
+                    for (int i = 0; i < taskCount; i++) {
+                        if (tasks.get(i).matchesDescription(keyword)) {
+                            taskOutput.append("\n").append(i + 1).append(".")
+                                    .append(tasks.get(i));
+                        }
+                    }
+                    Ui.tuesdayPrint(taskOutput.toString());
+                }
+                return 0;
+            }
+
+            if (command == Command.UNKNOWN) {
+                throw new TuesdayExceptions.UnknownCommandException(input);
+            }
+
+            if (command == Command.DELETE) {
+                if (!isAvailableDelete(input, taskCount)) {
+                    throw new TuesdayExceptions.UnknownCommandException(input);
+                }
+
+                Scanner scanner = new Scanner(input);
+                scanner.next();
+                int target = scanner.nextInt();
+                Task removedTask = tasks.remove(target - 1);
+                try {
+                    DataSave.modifyData(DataSave.FILE_PATH, tasks, taskCount - 1);
+                } catch (IOException e) {
+                    Ui.tuesdayPrint("Failed to save data! Unable to create the save file, Sir!");
+                }
+                Ui.tuesdayPrint("Noted. I've removed this task:\n"
+                        + "  " + removedTask + "\n"
+                        + "Now you have " + (taskCount - 1) + " tasks in the list.");
+                return -1;
+            }
+
+            if (command == Command.MARK || command == Command.UNMARK) {
+                if (!isAvailableMark(input, taskCount)) {
+                    throw new TuesdayExceptions.UnknownCommandException(input);
+                }
+
+                Scanner scanner = new Scanner(input);
+                scanner.next();
+                int target = scanner.nextInt();
+                Task task = tasks.get(target - 1);
+
+                if (command == Command.MARK) {
+                    task.mark();
+                    Ui.tuesdayPrint(Strings.MARK + "\n  " + task);
+                } else {
+                    task.unMark();
+                    Ui.tuesdayPrint(Strings.UNMARK + "\n  " + task);
+                }
+
+                try {
+                    DataSave.modifyData(DataSave.FILE_PATH, tasks, taskCount);
+                } catch (IOException e) {
+                    Ui.tuesdayPrint("Failed to save data! Unable to create the file, Sir!");
+                }
+                return 0;
+            }
+
+            if (!isAvailableTaskCommand(input)) {
+                throw new TuesdayExceptions.UnknownCommandException(input);
+            }
+
+            if (taskCount >= 100) {
+                throw new TuesdayExceptions.TaskNumberOutRangeException("");
+            }
+
+            String trimmedInput = input.trim();
+            Task task;
+
+            if (command == Command.TODO) {
+                String description = trimmedInput.substring("todo".length()).trim();
+                task = new Todo(description);
+            } else if (command == Command.DEADLINE) {
+                String details = trimmedInput.substring("deadline".length()).trim();
+                int byIndex = details.indexOf("/by");
+                String description = details.substring(0, byIndex).trim();
+                Event.DateTimeValue by = parseDateTime(details.substring(byIndex + 3).trim());
+                task = new Deadline(description, by.date(), by.time());
+            } else {
+                String details = trimmedInput.substring("event".length()).trim();
+                int fromIndex = details.indexOf("/from");
+                int toIndex = details.indexOf("/to");
+                String description = details.substring(0, fromIndex).trim();
+                Event.DateTimeValue from = parseDateTime(details.substring(fromIndex + 5, toIndex).trim());
+                Event.DateTimeValue to = parseDateTime(details.substring(toIndex + 3).trim());
+                task = new Event(description, from, to);
+            }
+
+            try {
+                DataSave.saveNewData(DataSave.FILE_PATH, task.toString());
+            } catch (IOException e) {
+                Ui.tuesdayPrint("Failed to save data! Unable to create the file, Sir");
+            }
+            tasks.add(task);
+            Ui.tuesdayPrint("Got it. I've added this task:\n"
+                    + "  " + task + "\n"
+                    + "Now you have " + (taskCount + 1) + " tasks in the list.");
+            return 1;
+        } catch (TuesdayExceptions.NoDescriptionnException e) {
+            Ui.tuesdayPrint("please add description, sir!");
+        } catch (TuesdayExceptions.DeadlineMissingByDateException e) {
+            Ui.tuesdayPrint("please add a deadline date, sir!");
+        } catch (TuesdayExceptions.EventMissingTimeException e) {
+            Ui.tuesdayPrint("please add both starting and ending times, sir!");
+        } catch (TuesdayExceptions.MarkTaskNumberOutOfRangeException e) {
+            Ui.tuesdayPrint("Sir, that mark number is out of range.");
+        } catch (TuesdayExceptions.DeleteTaskNumberOutOfRangeException e) {
+            Ui.tuesdayPrint("Sir, that delete number is out of range.");
+        } catch (TuesdayExceptions.UnknownCommandException e) {
+            Ui.tuesdayPrint("Sir, what do you mean by " + e.getMessage());
+        } catch (TuesdayExceptions.TaskNumberOutRangeException e) {
+            Ui.tuesdayPrint("Sir, this will cost too much time");
         }
-        tasks.add(task);
-        Ui.tuesdayPrint("Got it. I've added this task:\n"
-                + "  " + task + "\n"
-                + "Now you have " + (taskCount + 1) + " tasks in the list.");
-        return 1;
+        return 0;
     }
 }
