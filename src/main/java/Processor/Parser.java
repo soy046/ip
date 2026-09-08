@@ -395,6 +395,9 @@ public class Parser {
      * @return the response to display to the user
      */
     public static String commandProcess(String input, TaskList tasks, int taskCount) {
+        assert taskCount == tasks.size()
+                : "Task count should always match the number of tasks in the task list";
+
         Command command = getCommand(input);
 
         try {
@@ -497,6 +500,7 @@ public class Parser {
                 int byIndex = details.indexOf("/by");
                 String description = details.substring(0, byIndex).trim();
                 Event.DateTimeValue by = parseDateTime(details.substring(byIndex + 3).trim());
+                assert by != null : "A validated deadline should always contain a valid date or time";
                 task = new Deadline(description, by.date(), by.time());
             } else {
                 String details = trimmedInput.substring("event".length()).trim();
@@ -505,6 +509,8 @@ public class Parser {
                 String description = details.substring(0, fromIndex).trim();
                 Event.DateTimeValue from = parseDateTime(details.substring(fromIndex + 5, toIndex).trim());
                 Event.DateTimeValue to = parseDateTime(details.substring(toIndex + 3).trim());
+                assert from != null && to != null
+                        : "A validated event should always contain valid start and end times";
                 task = new Event(description, from, to);
             }
 
