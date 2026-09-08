@@ -13,8 +13,8 @@ import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 import processor.Command;
-import processor.DataSave;
 import processor.Parser;
+import processor.Storage;
 import task.TaskList;
 
 /**
@@ -42,7 +42,7 @@ public class MainWindow extends AnchorPane {
     public void initialize() {
         scrollPane.vvalueProperty().bind(dialogContainer.heightProperty());
         try {
-            this.taskCount = Parser.loadData(DataSave.FILE_PATH, this.tasks);
+            this.taskCount = Storage.loadData(Storage.FILE_PATH, this.tasks);
         } catch (FileNotFoundException e) {
             this.taskCount = 0;
         }

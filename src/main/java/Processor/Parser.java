@@ -1,7 +1,5 @@
 package processor;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -251,179 +249,6 @@ public class Parser {
     }
 
     /**
-     * Parses a date-time value stored in the task file's display format.
-     */
-    private static Event.DateTimeValue parseSavedDateTime(String value) {
-        try {
-            return new Event.DateTimeValue(
-                    LocalDate.parse(value, Event.DATE_FORMATTER), null);
-        } catch (DateTimeParseException dateException) {
-            try {
-                return new Event.DateTimeValue(
-                        null, LocalTime.parse(value, Event.TIME_FORMATTER));
-            } catch (DateTimeParseException timeException) {
-                int separator = value.lastIndexOf(' ');
-                if (separator <= 0) {
-                    return null;
-                }
-                try {
-                    return new Event.DateTimeValue(
-                            LocalDate.parse(value.substring(0, separator), Event.DATE_FORMATTER),
-                            LocalTime.parse(value.substring(separator + 1), Event.TIME_FORMATTER));
-                } catch (DateTimeParseException combinedException) {
-                    return null;
-                }
-            }
-        }
-    }
-
-    /**
-     * Loads saved tasks from a file into an ArrayList. And will skip the line which is not a valid Task
-     *
-     * @param filePath the path of the saved task file
-     * @param tasks    the list to which loaded tasks are added
-     * @return the number of valid tasks loaded
-     * @throws FileNotFoundException if the save file cannot be found
-     */
-    public static int loadData(String filePath, TaskList tasks)
-            throws FileNotFoundException {
-        int taskCount = 0;
-
-        try (Scanner scanner = new Scanner(new File(filePath))) {
-            while (scanner.hasNextLine()) {
-                Task task = toTask(scanner.nextLine());
-                if (task != null) {
-                    tasks.add(task);
-                    taskCount++;
-                }
-            }
-        }
-
-        return taskCount;
-    }
-
-    /**
-     * Converts a saved task string back into its corresponding task object.
-     *
-     * @param taskData the saved string representation of a task
-     * @return the reconstructed task, or null if the saved text is invalid
-     */
-    private static Task toTask(String taskData) {
-        if (taskData == null) {
-            return null;
-        }
-
-        String data = taskData.trim();
-        if (!hasValidSavedTaskStructure(data)) {
-            return null;
-        }
-
-        char status = data.charAt(4);
-        if (!hasValidSavedTaskStatus(status)) {
-            return null;
-        }
-
-        Task task = parseSavedTask(data.charAt(1), data.substring(7));
-        if (task == null) {
-            return null;
-        }
-
-        if (status == 'X') {
-            task.mark();
-        }
-        return task;
-    }
-
-    /**
-     * Checks that saved task data has the expected type and status brackets.
-     */
-    private static boolean hasValidSavedTaskStructure(String data) {
-        return data.length() >= 8
-                && data.charAt(0) == '['
-                && data.charAt(2) == ']'
-                && data.charAt(3) == '['
-                && data.charAt(5) == ']'
-                && data.charAt(6) == ' ';
-    }
-
-    /**
-     * Checks whether a saved task status represents a completed or incomplete task.
-     */
-    private static boolean hasValidSavedTaskStatus(char status) {
-        return status == 'X' || status == ' ';
-    }
-
-    /**
-     * Parses saved task details according to their task type.
-     */
-    private static Task parseSavedTask(char type, String details) {
-        return switch (type) {
-            case 'T' -> parseSavedTodo(details);
-            case 'D' -> parseSavedDeadline(details);
-            case 'E' -> parseSavedEvent(details);
-            default -> null;
-        };
-    }
-
-    /**
-     * Creates a todo from its saved description.
-     */
-    private static Todo parseSavedTodo(String details) {
-        return new Todo(details);
-    }
-
-    /**
-     * Parses the description and date-time of a saved deadline.
-     */
-    private static Deadline parseSavedDeadline(String details) {
-        String marker = " (by: ";
-        int markerIndex = details.lastIndexOf(marker);
-        if (markerIndex < 0 || !details.endsWith(")")) {
-            return null;
-        }
-
-        String description = details.substring(0, markerIndex);
-        String deadlineText = details.substring(markerIndex + marker.length(), details.length() - 1);
-        if (description.isEmpty() || deadlineText.isEmpty()) {
-            return null;
-        }
-
-        Event.DateTimeValue deadline = parseSavedDateTime(deadlineText);
-        if (deadline == null) {
-            return null;
-        }
-        return new Deadline(description, deadline.date(), deadline.time());
-    }
-
-    /**
-     * Parses the description, start, and end of a saved event.
-     */
-    private static Event parseSavedEvent(String details) {
-        String fromMarker = " (from: ";
-        String toMarker = " to: ";
-        int fromIndex = details.indexOf(fromMarker);
-        int toIndex = details.lastIndexOf(toMarker);
-
-        if (fromIndex < 0 || toIndex <= fromIndex || !details.endsWith(")")) {
-            return null;
-        }
-
-        String description = details.substring(0, fromIndex);
-        String startTimeText = details.substring(fromIndex + fromMarker.length(), toIndex);
-        String endTimeText = details.substring(toIndex + toMarker.length(), details.length() - 1);
-        if (description.isEmpty() || startTimeText.isEmpty() || endTimeText.isEmpty()) {
-            return null;
-        }
-
-        Event.DateTimeValue start = parseSavedDateTime(startTimeText);
-        Event.DateTimeValue end = parseSavedDateTime(endTimeText);
-        if (start == null || end == null) {
-            return null;
-        }
-        return new Event(description, start, end);
-    }
-
-    /**
      * Processes a command and returns the corresponding response.
      *
      * @param input     the command entered by the user
@@ -511,7 +336,7 @@ public class Parser {
                 + "  " + removedTask + "\n"
                 + "Now you have " + (taskCount - 1) + " tasks in the list.";
         try {
-            DataSave.modifyData(DataSave.FILE_PATH, tasks, taskCount - 1);
+            Storage.modifyData(Storage.FILE_PATH, tasks, taskCount - 1);
         } catch (IOException e) {
             response = "Failed to save data! Unable to create the save file, Sir!\n" + response;
         }
@@ -543,7 +368,7 @@ public class Parser {
         }
 
         try {
-            DataSave.modifyData(DataSave.FILE_PATH, tasks, taskCount);
+            Storage.modifyData(Storage.FILE_PATH, tasks, taskCount);
         } catch (IOException e) {
             response = "Failed to save data! Unable to create the file, Sir!\n" + response;
         }
@@ -572,7 +397,7 @@ public class Parser {
                 + "  " + task + "\n"
                 + "Now you have " + (taskCount + 1) + " tasks in the list.";
         try {
-            DataSave.saveNewData(DataSave.FILE_PATH, task.toString());
+            Storage.saveNewData(Storage.FILE_PATH, task.toString());
         } catch (IOException e) {
             response = "Failed to save data! Unable to create the file, Sir\n" + response;
         }
