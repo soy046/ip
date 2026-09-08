@@ -309,81 +309,118 @@ public class Parser {
      * @return the reconstructed task, or null if the saved text is invalid
      */
     private static Task toTask(String taskData) {
-        if (taskData == null || taskData.trim().length() < 8) {
+        if (taskData == null) {
             return null;
         }
 
         String data = taskData.trim();
-        if (data.charAt(0) != '[' || data.charAt(2) != ']'
-                || data.charAt(3) != '[' || data.charAt(5) != ']'
-                || data.charAt(6) != ' ') {
+        if (!hasValidSavedTaskStructure(data)) {
             return null;
         }
 
-        char type = data.charAt(1);
         char status = data.charAt(4);
-        boolean isDone;
+        if (!hasValidSavedTaskStatus(status)) {
+            return null;
+        }
+
+        Task task = parseSavedTask(data.charAt(1), data.substring(7));
+        if (task == null) {
+            return null;
+        }
 
         if (status == 'X') {
-            isDone = true;
-        } else if (status == ' ') {
-            isDone = false;
-        } else {
-            return null;
-        }
-
-        String details = data.substring(7);
-        Task task;
-
-        if (type == 'T') {
-            task = new Todo(details);
-        } else if (type == 'D') {
-            String marker = " (by: ";
-            int markerIndex = details.lastIndexOf(marker);
-            if (markerIndex < 0 || !details.endsWith(")")) {
-                return null;
-            }
-
-            String description = details.substring(0, markerIndex);
-            String deadlineText = details.substring(markerIndex + marker.length(), details.length() - 1);
-            if (description.isEmpty() || deadlineText.isEmpty()) {
-                return null;
-            }
-            Event.DateTimeValue deadline = parseSavedDateTime(deadlineText);
-            if (deadline == null) {
-                return null;
-            }
-            task = new Deadline(description, deadline.date(), deadline.time());
-        } else if (type == 'E') {
-            String fromMarker = " (from: ";
-            String toMarker = " to: ";
-            int fromIndex = details.indexOf(fromMarker);
-            int toIndex = details.lastIndexOf(toMarker);
-
-            if (fromIndex < 0 || toIndex <= fromIndex || !details.endsWith(")")) {
-                return null;
-            }
-
-            String description = details.substring(0, fromIndex);
-            String startTimeText = details.substring(fromIndex + fromMarker.length(), toIndex);
-            String endTimeText = details.substring(toIndex + toMarker.length(), details.length() - 1);
-            if (description.isEmpty() || startTimeText.isEmpty() || endTimeText.isEmpty()) {
-                return null;
-            }
-            Event.DateTimeValue start = parseSavedDateTime(startTimeText);
-            Event.DateTimeValue end = parseSavedDateTime(endTimeText);
-            if (start == null || end == null) {
-                return null;
-            }
-            task = new Event(description, start, end);
-        } else {
-            return null;
-        }
-
-        if (isDone) {
             task.mark();
         }
         return task;
+    }
+
+    /**
+     * Checks that saved task data has the expected type and status brackets.
+     */
+    private static boolean hasValidSavedTaskStructure(String data) {
+        return data.length() >= 8
+                && data.charAt(0) == '['
+                && data.charAt(2) == ']'
+                && data.charAt(3) == '['
+                && data.charAt(5) == ']'
+                && data.charAt(6) == ' ';
+    }
+
+    /**
+     * Checks whether a saved task status represents a completed or incomplete task.
+     */
+    private static boolean hasValidSavedTaskStatus(char status) {
+        return status == 'X' || status == ' ';
+    }
+
+    /**
+     * Parses saved task details according to their task type.
+     */
+    private static Task parseSavedTask(char type, String details) {
+        return switch (type) {
+            case 'T' -> parseSavedTodo(details);
+            case 'D' -> parseSavedDeadline(details);
+            case 'E' -> parseSavedEvent(details);
+            default -> null;
+        };
+    }
+
+    /**
+     * Creates a todo from its saved description.
+     */
+    private static Todo parseSavedTodo(String details) {
+        return new Todo(details);
+    }
+
+    /**
+     * Parses the description and date-time of a saved deadline.
+     */
+    private static Deadline parseSavedDeadline(String details) {
+        String marker = " (by: ";
+        int markerIndex = details.lastIndexOf(marker);
+        if (markerIndex < 0 || !details.endsWith(")")) {
+            return null;
+        }
+
+        String description = details.substring(0, markerIndex);
+        String deadlineText = details.substring(markerIndex + marker.length(), details.length() - 1);
+        if (description.isEmpty() || deadlineText.isEmpty()) {
+            return null;
+        }
+
+        Event.DateTimeValue deadline = parseSavedDateTime(deadlineText);
+        if (deadline == null) {
+            return null;
+        }
+        return new Deadline(description, deadline.date(), deadline.time());
+    }
+
+    /**
+     * Parses the description, start, and end of a saved event.
+     */
+    private static Event parseSavedEvent(String details) {
+        String fromMarker = " (from: ";
+        String toMarker = " to: ";
+        int fromIndex = details.indexOf(fromMarker);
+        int toIndex = details.lastIndexOf(toMarker);
+
+        if (fromIndex < 0 || toIndex <= fromIndex || !details.endsWith(")")) {
+            return null;
+        }
+
+        String description = details.substring(0, fromIndex);
+        String startTimeText = details.substring(fromIndex + fromMarker.length(), toIndex);
+        String endTimeText = details.substring(toIndex + toMarker.length(), details.length() - 1);
+        if (description.isEmpty() || startTimeText.isEmpty() || endTimeText.isEmpty()) {
+            return null;
+        }
+
+        Event.DateTimeValue start = parseSavedDateTime(startTimeText);
+        Event.DateTimeValue end = parseSavedDateTime(endTimeText);
+        if (start == null || end == null) {
+            return null;
+        }
+        return new Event(description, start, end);
     }
 
     /**
@@ -402,13 +439,13 @@ public class Parser {
 
         try {
             return switch (command) {
-            case BYE -> Strings.FAREWELL;
-            case LIST -> processListCommand(tasks, taskCount);
-            case FIND -> processFindCommand(input, tasks, taskCount);
-            case DELETE -> processDeleteCommand(input, tasks, taskCount);
-            case MARK, UNMARK -> processTaskStatusCommand(input, tasks, taskCount, command);
-            case TODO, DEADLINE, EVENT -> processTaskCreationCommand(input, tasks, taskCount, command);
-            case UNKNOWN -> throw new TuesdayExceptions.UnknownCommandException(input);
+                case BYE -> Strings.FAREWELL;
+                case LIST -> processListCommand(tasks, taskCount);
+                case FIND -> processFindCommand(input, tasks, taskCount);
+                case DELETE -> processDeleteCommand(input, tasks, taskCount);
+                case MARK, UNMARK -> processTaskStatusCommand(input, tasks, taskCount, command);
+                case TODO, DEADLINE, EVENT -> processTaskCreationCommand(input, tasks, taskCount, command);
+                case UNKNOWN -> throw new TuesdayExceptions.UnknownCommandException(input);
             };
         } catch (TuesdayExceptions.NoDescriptionnException e) {
             return "please add description, sir!";
@@ -548,10 +585,10 @@ public class Parser {
      */
     private static Task createTask(String input, Command command) {
         return switch (command) {
-        case TODO -> createTodo(input);
-        case DEADLINE -> createDeadline(input);
-        case EVENT -> createEvent(input);
-        default -> throw new IllegalArgumentException("Command does not create a task: " + command);
+            case TODO -> createTodo(input);
+            case DEADLINE -> createDeadline(input);
+            case EVENT -> createEvent(input);
+            default -> throw new IllegalArgumentException("Command does not create a task: " + command);
         };
     }
 
