@@ -31,23 +31,17 @@ public final class Storage {
      *
      * @param filePath the path of the saved task file
      * @param tasks the list to which loaded tasks are added
-     * @return the number of valid tasks loaded
      * @throws FileNotFoundException if the save file cannot be found
      */
-    public static int loadData(String filePath, TaskList tasks) throws FileNotFoundException {
-        int taskCount = 0;
-
+    public static void loadData(String filePath, TaskList tasks) throws FileNotFoundException {
         try (Scanner scanner = new Scanner(new File(filePath))) {
             while (scanner.hasNextLine()) {
                 Task task = toTask(scanner.nextLine());
                 if (task != null) {
                     tasks.add(task);
-                    taskCount++;
                 }
             }
         }
-
-        return taskCount;
     }
 
     /**
@@ -76,10 +70,9 @@ public final class Storage {
      *
      * @param filePath the path of the saved task file
      * @param tasks the tasks to save
-     * @param taskCount the number of tasks to save
      * @throws IOException if the data cannot be saved
      */
-    public static void modifyData(String filePath, TaskList tasks, int taskCount) throws IOException {
+    public static void modifyData(String filePath, TaskList tasks) throws IOException {
         File file = new File(filePath);
         File parent = file.getParentFile();
 
@@ -88,7 +81,7 @@ public final class Storage {
         }
 
         String data = "";
-        for (int i = 0; i < taskCount; i++) {
+        for (int i = 0; i < tasks.size(); i++) {
             data = data + tasks.get(i).toString() + System.lineSeparator();
         }
 

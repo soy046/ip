@@ -68,11 +68,12 @@ public class Parser {
     /**
      * Checks whether the input is a valid mark or unmark command.
      *
-     * @param input     the complete line entered by the user
-     * @param taskCount the number of tasks currently stored
+     * @param input the complete line entered by the user
+     * @param tasks the tasks currently stored
      * @return true if the command refers to an existing task
+     * @throws TuesdayExceptions.MarkTaskNumberOutOfRangeException if the task number is outside the list
      */
-    public static boolean isAvailableMark(String input, int taskCount)
+    public static boolean isAvailableMark(String input, TaskList tasks)
             throws TuesdayExceptions.MarkTaskNumberOutOfRangeException {
         Scanner scanner = new Scanner(input);
 
@@ -90,7 +91,7 @@ public class Parser {
         }
 
         int target = scanner.nextInt();
-        if (target <= 0 || target > taskCount) {
+        if (target <= 0 || target > tasks.size()) {
             throw new TuesdayExceptions.MarkTaskNumberOutOfRangeException(String.valueOf(target));
         }
         return !scanner.hasNext();
@@ -99,11 +100,12 @@ public class Parser {
     /**
      * Checks whether a delete command refers to an existing task.
      *
-     * @param input     the complete line entered by the user
-     * @param taskCount the number of tasks currently stored
+     * @param input the complete line entered by the user
+     * @param tasks the tasks currently stored
      * @return true if the command refers to an existing task
+     * @throws TuesdayExceptions.DeleteTaskNumberOutOfRangeException if the task number is outside the list
      */
-    public static boolean isAvailableDelete(String input, int taskCount)
+    public static boolean isAvailableDelete(String input, TaskList tasks)
             throws TuesdayExceptions.DeleteTaskNumberOutOfRangeException {
         Scanner scanner = new Scanner(input);
 
@@ -113,7 +115,7 @@ public class Parser {
         }
 
         int target = scanner.nextInt();
-        if (target <= 0 || target > taskCount) {
+        if (target <= 0 || target > tasks.size()) {
             throw new TuesdayExceptions.DeleteTaskNumberOutOfRangeException(String.valueOf(target));
         }
         return !scanner.hasNext();
@@ -251,25 +253,21 @@ public class Parser {
     /**
      * Processes a command and returns the corresponding response.
      *
-     * @param input     the command entered by the user
-     * @param tasks     the task list
-     * @param taskCount the number of tasks currently stored
+     * @param input the command entered by the user
+     * @param tasks the task list
      * @return the response to display to the user
      */
-    public static String commandProcess(String input, TaskList tasks, int taskCount) {
-        assert taskCount == tasks.size()
-                : "Task count should always match the number of tasks in the task list";
-
+    public static String commandProcess(String input, TaskList tasks) {
         Command command = getCommand(input);
 
         try {
             return switch (command) {
                 case BYE -> Strings.FAREWELL;
-                case LIST -> processListCommand(tasks, taskCount);
-                case FIND -> processFindCommand(input, tasks, taskCount);
-                case DELETE -> processDeleteCommand(input, tasks, taskCount);
-                case MARK, UNMARK -> processTaskStatusCommand(input, tasks, taskCount, command);
-                case TODO, DEADLINE, EVENT -> processTaskCreationCommand(input, tasks, taskCount, command);
+                case LIST -> processListCommand(tasks);
+                case FIND -> processFindCommand(input, tasks);
+                case DELETE -> processDeleteCommand(input, tasks);
+                case MARK, UNMARK -> processTaskStatusCommand(input, tasks, command);
+                case TODO, DEADLINE, EVENT -> processTaskCreationCommand(input, tasks, command);
                 case UNKNOWN -> throw new TuesdayExceptions.UnknownCommandException(input);
             };
         } catch (TuesdayExceptions.NoDescriptionnException e) {
@@ -292,9 +290,9 @@ public class Parser {
     /**
      * Formats all tasks for the list command.
      */
-    private static String processListCommand(TaskList tasks, int taskCount) {
+    private static String processListCommand(TaskList tasks) {
         StringBuilder taskOutput = new StringBuilder(Strings.SHOW_LIST);
-        for (int i = 1; i <= taskCount; i++) {
+        for (int i = 1; i <= tasks.size(); i++) {
             taskOutput.append("\n").append(i).append(".").append(tasks.get(i - 1));
         }
         return taskOutput.toString();
@@ -303,14 +301,14 @@ public class Parser {
     /**
      * Finds and formats tasks whose descriptions contain the requested keyword.
      */
-    private static String processFindCommand(String input, TaskList tasks, int taskCount) {
+    private static String processFindCommand(String input, TaskList tasks) {
         String keyword = input.substring("find".length()).trim();
         if (keyword.isEmpty()) {
             return "Please provide a keyword to find, Sir!";
         }
 
         StringBuilder taskOutput = new StringBuilder("Here are the matching tasks in your list:");
-        for (int i = 0; i < taskCount; i++) {
+        for (int i = 0; i < tasks.size(); i++) {
             if (tasks.get(i).matchesDescription(keyword)) {
                 taskOutput.append("\n").append(i + 1).append(".").append(tasks.get(i));
             }
@@ -321,10 +319,10 @@ public class Parser {
     /**
      * Deletes the task selected by a valid delete command and saves the updated list.
      */
-    private static String processDeleteCommand(String input, TaskList tasks, int taskCount)
+    private static String processDeleteCommand(String input, TaskList tasks)
             throws TuesdayExceptions.DeleteTaskNumberOutOfRangeException,
             TuesdayExceptions.UnknownCommandException {
-        if (!isAvailableDelete(input, taskCount)) {
+        if (!isAvailableDelete(input, tasks)) {
             throw new TuesdayExceptions.UnknownCommandException(input);
         }
 
@@ -334,9 +332,9 @@ public class Parser {
         Task removedTask = tasks.remove(target - 1);
         String response = "Noted. I've removed this task:\n"
                 + "  " + removedTask + "\n"
-                + "Now you have " + (taskCount - 1) + " tasks in the list.";
+                + "Now you have " + tasks.size() + " tasks in the list.";
         try {
-            Storage.modifyData(Storage.FILE_PATH, tasks, taskCount - 1);
+            Storage.modifyData(Storage.FILE_PATH, tasks);
         } catch (IOException e) {
             response = "Failed to save data! Unable to create the save file, Sir!\n" + response;
         }
@@ -346,10 +344,13 @@ public class Parser {
     /**
      * Marks or unmarks the selected task and saves its new status.
      */
-    private static String processTaskStatusCommand(String input, TaskList tasks, int taskCount, Command command)
+    private static String processTaskStatusCommand(String input, TaskList tasks, Command command)
             throws TuesdayExceptions.MarkTaskNumberOutOfRangeException,
             TuesdayExceptions.UnknownCommandException {
-        if (!isAvailableMark(input, taskCount)) {
+        assert command == Command.MARK || command == Command.UNMARK
+                : "A task status command should always be mark or unmark";
+
+        if (!isAvailableMark(input, tasks)) {
             throw new TuesdayExceptions.UnknownCommandException(input);
         }
 
@@ -368,7 +369,7 @@ public class Parser {
         }
 
         try {
-            Storage.modifyData(Storage.FILE_PATH, tasks, taskCount);
+            Storage.modifyData(Storage.FILE_PATH, tasks);
         } catch (IOException e) {
             response = "Failed to save data! Unable to create the file, Sir!\n" + response;
         }
@@ -378,7 +379,7 @@ public class Parser {
     /**
      * Creates a task from a valid task-creation command and saves it.
      */
-    private static String processTaskCreationCommand(String input, TaskList tasks, int taskCount, Command command)
+    private static String processTaskCreationCommand(String input, TaskList tasks, Command command)
             throws TuesdayExceptions.NoDescriptionnException,
             TuesdayExceptions.DeadlineMissingByDateException,
             TuesdayExceptions.EventMissingTimeException,
@@ -388,14 +389,14 @@ public class Parser {
             throw new TuesdayExceptions.UnknownCommandException(input);
         }
 
-        if (taskCount >= 100) {
+        if (tasks.size() >= 100) {
             throw new TuesdayExceptions.TaskNumberOutRangeException("");
         }
 
         Task task = createTask(input, command);
         String response = "Got it. I've added this task:\n"
                 + "  " + task + "\n"
-                + "Now you have " + (taskCount + 1) + " tasks in the list.";
+                + "Now you have " + (tasks.size() + 1) + " tasks in the list.";
         try {
             Storage.saveNewData(Storage.FILE_PATH, task.toString());
         } catch (IOException e) {

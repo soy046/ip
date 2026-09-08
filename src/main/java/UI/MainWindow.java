@@ -33,7 +33,6 @@ public class MainWindow extends AnchorPane {
     private Image tuesdayImage = new Image(this.getClass().getResourceAsStream("/images/Tuesday.png"));
     private Image userImage = new Image(this.getClass().getResourceAsStream("/images/TonyStark.png"));
     private TaskList tasks = new TaskList();
-    private int taskCount = 0;
 
     /**
      *  initializes the MainWindow
@@ -42,9 +41,9 @@ public class MainWindow extends AnchorPane {
     public void initialize() {
         scrollPane.vvalueProperty().bind(dialogContainer.heightProperty());
         try {
-            this.taskCount = Storage.loadData(Storage.FILE_PATH, this.tasks);
+            Storage.loadData(Storage.FILE_PATH, this.tasks);
         } catch (FileNotFoundException e) {
-            this.taskCount = 0;
+            // A missing save file is expected when the application runs for the first time.
         }
     }
 
@@ -54,8 +53,7 @@ public class MainWindow extends AnchorPane {
     @FXML
     private void handleUserInput() {
         String input = userInput.getText();
-        String response = Parser.commandProcess(input, tasks, taskCount);
-        taskCount = tasks.size();
+        String response = Parser.commandProcess(input, tasks);
         dialogContainer.getChildren().addAll(
                 DialogBox.getUserDialog(input, userImage),
                 DialogBox.getTuesdayDialog(response, tuesdayImage)
