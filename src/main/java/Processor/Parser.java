@@ -1,7 +1,5 @@
 package processor;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -70,11 +68,12 @@ public class Parser {
     /**
      * Checks whether the input is a valid mark or unmark command.
      *
-     * @param input     the complete line entered by the user
-     * @param taskCount the number of tasks currently stored
+     * @param input the complete line entered by the user
+     * @param tasks the tasks currently stored
      * @return true if the command refers to an existing task
+     * @throws TuesdayExceptions.MarkTaskNumberOutOfRangeException if the task number is outside the list
      */
-    public static boolean isAvailableMark(String input, int taskCount)
+    public static boolean isAvailableMark(String input, TaskList tasks)
             throws TuesdayExceptions.MarkTaskNumberOutOfRangeException {
         Scanner scanner = new Scanner(input);
 
@@ -92,7 +91,7 @@ public class Parser {
         }
 
         int target = scanner.nextInt();
-        if (target <= 0 || target > taskCount) {
+        if (target <= 0 || target > tasks.size()) {
             throw new TuesdayExceptions.MarkTaskNumberOutOfRangeException(String.valueOf(target));
         }
         return !scanner.hasNext();
@@ -101,11 +100,12 @@ public class Parser {
     /**
      * Checks whether a delete command refers to an existing task.
      *
-     * @param input     the complete line entered by the user
-     * @param taskCount the number of tasks currently stored
+     * @param input the complete line entered by the user
+     * @param tasks the tasks currently stored
      * @return true if the command refers to an existing task
+     * @throws TuesdayExceptions.DeleteTaskNumberOutOfRangeException if the task number is outside the list
      */
-    public static boolean isAvailableDelete(String input, int taskCount)
+    public static boolean isAvailableDelete(String input, TaskList tasks)
             throws TuesdayExceptions.DeleteTaskNumberOutOfRangeException {
         Scanner scanner = new Scanner(input);
 
@@ -115,7 +115,7 @@ public class Parser {
         }
 
         int target = scanner.nextInt();
-        if (target <= 0 || target > taskCount) {
+        if (target <= 0 || target > tasks.size()) {
             throw new TuesdayExceptions.DeleteTaskNumberOutOfRangeException(String.valueOf(target));
         }
         return !scanner.hasNext();
@@ -251,273 +251,25 @@ public class Parser {
     }
 
     /**
-     * Parses a date-time value stored in the task file's display format.
-     */
-    private static Event.DateTimeValue parseSavedDateTime(String value) {
-        try {
-            return new Event.DateTimeValue(
-                    LocalDate.parse(value, Event.DATE_FORMATTER), null);
-        } catch (DateTimeParseException dateException) {
-            try {
-                return new Event.DateTimeValue(
-                        null, LocalTime.parse(value, Event.TIME_FORMATTER));
-            } catch (DateTimeParseException timeException) {
-                int separator = value.lastIndexOf(' ');
-                if (separator <= 0) {
-                    return null;
-                }
-                try {
-                    return new Event.DateTimeValue(
-                            LocalDate.parse(value.substring(0, separator), Event.DATE_FORMATTER),
-                            LocalTime.parse(value.substring(separator + 1), Event.TIME_FORMATTER));
-                } catch (DateTimeParseException combinedException) {
-                    return null;
-                }
-            }
-        }
-    }
-
-    /**
-     * Loads saved tasks from a file into an ArrayList. And will skip the line which is not a valid Task
-     *
-     * @param filePath the path of the saved task file
-     * @param tasks    the list to which loaded tasks are added
-     * @return the number of valid tasks loaded
-     * @throws FileNotFoundException if the save file cannot be found
-     */
-    public static int loadData(String filePath, TaskList tasks)
-            throws FileNotFoundException {
-        int taskCount = 0;
-
-        try (Scanner scanner = new Scanner(new File(filePath))) {
-            while (scanner.hasNextLine()) {
-                Task task = toTask(scanner.nextLine());
-                if (task != null) {
-                    tasks.add(task);
-                    taskCount++;
-                }
-            }
-        }
-
-        return taskCount;
-    }
-
-    /**
-     * Converts a saved task string back into its corresponding task object.
-     *
-     * @param taskData the saved string representation of a task
-     * @return the reconstructed task, or null if the saved text is invalid
-     */
-    private static Task toTask(String taskData) {
-        if (taskData == null || taskData.trim().length() < 8) {
-            return null;
-        }
-
-        String data = taskData.trim();
-        if (data.charAt(0) != '[' || data.charAt(2) != ']'
-                || data.charAt(3) != '[' || data.charAt(5) != ']'
-                || data.charAt(6) != ' ') {
-            return null;
-        }
-
-        char type = data.charAt(1);
-        char status = data.charAt(4);
-        boolean isDone;
-
-        if (status == 'X') {
-            isDone = true;
-        } else if (status == ' ') {
-            isDone = false;
-        } else {
-            return null;
-        }
-
-        String details = data.substring(7);
-        Task task;
-
-        if (type == 'T') {
-            task = new Todo(details);
-        } else if (type == 'D') {
-            String marker = " (by: ";
-            int markerIndex = details.lastIndexOf(marker);
-            if (markerIndex < 0 || !details.endsWith(")")) {
-                return null;
-            }
-
-            String description = details.substring(0, markerIndex);
-            String deadlineText = details.substring(markerIndex + marker.length(), details.length() - 1);
-            if (description.isEmpty() || deadlineText.isEmpty()) {
-                return null;
-            }
-            Event.DateTimeValue deadline = parseSavedDateTime(deadlineText);
-            if (deadline == null) {
-                return null;
-            }
-            task = new Deadline(description, deadline.date(), deadline.time());
-        } else if (type == 'E') {
-            String fromMarker = " (from: ";
-            String toMarker = " to: ";
-            int fromIndex = details.indexOf(fromMarker);
-            int toIndex = details.lastIndexOf(toMarker);
-
-            if (fromIndex < 0 || toIndex <= fromIndex || !details.endsWith(")")) {
-                return null;
-            }
-
-            String description = details.substring(0, fromIndex);
-            String startTimeText = details.substring(fromIndex + fromMarker.length(), toIndex);
-            String endTimeText = details.substring(toIndex + toMarker.length(), details.length() - 1);
-            if (description.isEmpty() || startTimeText.isEmpty() || endTimeText.isEmpty()) {
-                return null;
-            }
-            Event.DateTimeValue start = parseSavedDateTime(startTimeText);
-            Event.DateTimeValue end = parseSavedDateTime(endTimeText);
-            if (start == null || end == null) {
-                return null;
-            }
-            task = new Event(description, start, end);
-        } else {
-            return null;
-        }
-
-        if (isDone) {
-            task.mark();
-        }
-        return task;
-    }
-
-    /**
      * Processes a command and returns the corresponding response.
      *
-     * @param input     the command entered by the user
-     * @param tasks     the task list
-     * @param taskCount the number of tasks currently stored
+     * @param input the command entered by the user
+     * @param tasks the task list
      * @return the response to display to the user
      */
-    public static String commandProcess(String input, TaskList tasks, int taskCount) {
+    public static String commandProcess(String input, TaskList tasks) {
         Command command = getCommand(input);
 
         try {
-            if (command == Command.BYE) {
-                return Strings.FAREWELL;
-            }
-
-            if (command == Command.LIST) {
-                StringBuilder taskOutput = new StringBuilder(Strings.SHOW_LIST);
-                for (int i = 1; i <= taskCount; i++) {
-                    taskOutput.append("\n").append(i).append(".").append(tasks.get(i - 1));
-                }
-                return taskOutput.toString();
-            }
-
-            if (command == Command.FIND) {
-                String keyword = input.substring("find".length()).trim();
-                if (keyword.isEmpty()) {
-                    return "Please provide a keyword to find, Sir!";
-                } else {
-                    StringBuilder taskOutput = new StringBuilder(
-                            "Here are the matching tasks in your list:");
-                    for (int i = 0; i < taskCount; i++) {
-                        if (tasks.get(i).matchesDescription(keyword)) {
-                            taskOutput.append("\n").append(i + 1).append(".")
-                                    .append(tasks.get(i));
-                        }
-                    }
-                    return taskOutput.toString();
-                }
-            }
-
-            if (command == Command.UNKNOWN) {
-                throw new TuesdayExceptions.UnknownCommandException(input);
-            }
-
-            if (command == Command.DELETE) {
-                if (!isAvailableDelete(input, taskCount)) {
-                    throw new TuesdayExceptions.UnknownCommandException(input);
-                }
-
-                Scanner scanner = new Scanner(input);
-                scanner.next();
-                int target = scanner.nextInt();
-                Task removedTask = tasks.remove(target - 1);
-                String response = "Noted. I've removed this task:\n"
-                        + "  " + removedTask + "\n"
-                        + "Now you have " + (taskCount - 1) + " tasks in the list.";
-                try {
-                    DataSave.modifyData(DataSave.FILE_PATH, tasks, taskCount - 1);
-                } catch (IOException e) {
-                    response = "Failed to save data! Unable to create the save file, Sir!\n" + response;
-                }
-                return response;
-            }
-
-            if (command == Command.MARK || command == Command.UNMARK) {
-                if (!isAvailableMark(input, taskCount)) {
-                    throw new TuesdayExceptions.UnknownCommandException(input);
-                }
-
-                Scanner scanner = new Scanner(input);
-                scanner.next();
-                int target = scanner.nextInt();
-                Task task = tasks.get(target - 1);
-
-                String response;
-                if (command == Command.MARK) {
-                    task.mark();
-                    response = Strings.MARK + "\n  " + task;
-                } else {
-                    task.unMark();
-                    response = Strings.UNMARK + "\n  " + task;
-                }
-
-                try {
-                    DataSave.modifyData(DataSave.FILE_PATH, tasks, taskCount);
-                } catch (IOException e) {
-                    response = "Failed to save data! Unable to create the file, Sir!\n" + response;
-                }
-                return response;
-            }
-
-            if (!isAvailableTaskCommand(input)) {
-                throw new TuesdayExceptions.UnknownCommandException(input);
-            }
-
-            if (taskCount >= 100) {
-                throw new TuesdayExceptions.TaskNumberOutRangeException("");
-            }
-
-            String trimmedInput = input.trim();
-            Task task;
-
-            if (command == Command.TODO) {
-                String description = trimmedInput.substring("todo".length()).trim();
-                task = new Todo(description);
-            } else if (command == Command.DEADLINE) {
-                String details = trimmedInput.substring("deadline".length()).trim();
-                int byIndex = details.indexOf("/by");
-                String description = details.substring(0, byIndex).trim();
-                Event.DateTimeValue by = parseDateTime(details.substring(byIndex + 3).trim());
-                task = new Deadline(description, by.date(), by.time());
-            } else {
-                String details = trimmedInput.substring("event".length()).trim();
-                int fromIndex = details.indexOf("/from");
-                int toIndex = details.indexOf("/to");
-                String description = details.substring(0, fromIndex).trim();
-                Event.DateTimeValue from = parseDateTime(details.substring(fromIndex + 5, toIndex).trim());
-                Event.DateTimeValue to = parseDateTime(details.substring(toIndex + 3).trim());
-                task = new Event(description, from, to);
-            }
-
-            String response = "Got it. I've added this task:\n"
-                    + "  " + task + "\n"
-                    + "Now you have " + (taskCount + 1) + " tasks in the list.";
-            try {
-                DataSave.saveNewData(DataSave.FILE_PATH, task.toString());
-            } catch (IOException e) {
-                response = "Failed to save data! Unable to create the file, Sir\n" + response;
-            }
-            tasks.add(task);
-            return response;
+            return switch (command) {
+                case BYE -> Strings.FAREWELL;
+                case LIST -> processListCommand(tasks);
+                case FIND -> processFindCommand(input, tasks);
+                case DELETE -> processDeleteCommand(input, tasks);
+                case MARK, UNMARK -> processTaskStatusCommand(input, tasks, command);
+                case TODO, DEADLINE, EVENT -> processTaskCreationCommand(input, tasks, command);
+                case UNKNOWN -> throw new TuesdayExceptions.UnknownCommandException(input);
+            };
         } catch (TuesdayExceptions.NoDescriptionnException e) {
             return "please add description, sir!";
         } catch (TuesdayExceptions.DeadlineMissingByDateException e) {
@@ -533,5 +285,171 @@ public class Parser {
         } catch (TuesdayExceptions.TaskNumberOutRangeException e) {
             return "Sir, this will cost too much time";
         }
+    }
+
+    /**
+     * Formats all tasks for the list command.
+     */
+    private static String processListCommand(TaskList tasks) {
+        StringBuilder taskOutput = new StringBuilder(Strings.SHOW_LIST);
+        for (int i = 1; i <= tasks.size(); i++) {
+            taskOutput.append("\n").append(i).append(".").append(tasks.get(i - 1));
+        }
+        return taskOutput.toString();
+    }
+
+    /**
+     * Finds and formats tasks whose descriptions contain the requested keyword.
+     */
+    private static String processFindCommand(String input, TaskList tasks) {
+        String keyword = input.substring("find".length()).trim();
+        if (keyword.isEmpty()) {
+            return "Please provide a keyword to find, Sir!";
+        }
+
+        StringBuilder taskOutput = new StringBuilder("Here are the matching tasks in your list:");
+        for (int i = 0; i < tasks.size(); i++) {
+            if (tasks.get(i).matchesDescription(keyword)) {
+                taskOutput.append("\n").append(i + 1).append(".").append(tasks.get(i));
+            }
+        }
+        return taskOutput.toString();
+    }
+
+    /**
+     * Deletes the task selected by a valid delete command and saves the updated list.
+     */
+    private static String processDeleteCommand(String input, TaskList tasks)
+            throws TuesdayExceptions.DeleteTaskNumberOutOfRangeException,
+            TuesdayExceptions.UnknownCommandException {
+        if (!isAvailableDelete(input, tasks)) {
+            throw new TuesdayExceptions.UnknownCommandException(input);
+        }
+
+        Scanner scanner = new Scanner(input);
+        scanner.next();
+        int target = scanner.nextInt();
+        Task removedTask = tasks.remove(target - 1);
+        String response = "Noted. I've removed this task:\n"
+                + "  " + removedTask + "\n"
+                + "Now you have " + tasks.size() + " tasks in the list.";
+        try {
+            Storage.modifyData(Storage.FILE_PATH, tasks);
+        } catch (IOException e) {
+            response = "Failed to save data! Unable to create the save file, Sir!\n" + response;
+        }
+        return response;
+    }
+
+    /**
+     * Marks or unmarks the selected task and saves its new status.
+     */
+    private static String processTaskStatusCommand(String input, TaskList tasks, Command command)
+            throws TuesdayExceptions.MarkTaskNumberOutOfRangeException,
+            TuesdayExceptions.UnknownCommandException {
+        assert command == Command.MARK || command == Command.UNMARK
+                : "A task status command should always be mark or unmark";
+
+        if (!isAvailableMark(input, tasks)) {
+            throw new TuesdayExceptions.UnknownCommandException(input);
+        }
+
+        Scanner scanner = new Scanner(input);
+        scanner.next();
+        int target = scanner.nextInt();
+        Task task = tasks.get(target - 1);
+
+        String response;
+        if (command == Command.MARK) {
+            task.mark();
+            response = Strings.MARK + "\n  " + task;
+        } else {
+            task.unMark();
+            response = Strings.UNMARK + "\n  " + task;
+        }
+
+        try {
+            Storage.modifyData(Storage.FILE_PATH, tasks);
+        } catch (IOException e) {
+            response = "Failed to save data! Unable to create the file, Sir!\n" + response;
+        }
+        return response;
+    }
+
+    /**
+     * Creates a task from a valid task-creation command and saves it.
+     */
+    private static String processTaskCreationCommand(String input, TaskList tasks, Command command)
+            throws TuesdayExceptions.NoDescriptionnException,
+            TuesdayExceptions.DeadlineMissingByDateException,
+            TuesdayExceptions.EventMissingTimeException,
+            TuesdayExceptions.TaskNumberOutRangeException,
+            TuesdayExceptions.UnknownCommandException {
+        if (!isAvailableTaskCommand(input)) {
+            throw new TuesdayExceptions.UnknownCommandException(input);
+        }
+
+        if (tasks.size() >= 100) {
+            throw new TuesdayExceptions.TaskNumberOutRangeException("");
+        }
+
+        Task task = createTask(input, command);
+        String response = "Got it. I've added this task:\n"
+                + "  " + task + "\n"
+                + "Now you have " + (tasks.size() + 1) + " tasks in the list.";
+        try {
+            Storage.saveNewData(Storage.FILE_PATH, task.toString());
+        } catch (IOException e) {
+            response = "Failed to save data! Unable to create the file, Sir\n" + response;
+        }
+        tasks.add(task);
+        return response;
+    }
+
+    /**
+     * Constructs the task type selected by a task-creation command.
+     */
+    private static Task createTask(String input, Command command) {
+        return switch (command) {
+            case TODO -> createTodo(input);
+            case DEADLINE -> createDeadline(input);
+            case EVENT -> createEvent(input);
+            default -> throw new IllegalArgumentException("Command does not create a task: " + command);
+        };
+    }
+
+    /**
+     * Constructs a todo from its command input.
+     */
+    private static Todo createTodo(String input) {
+        String description = input.trim().substring("todo".length()).trim();
+        return new Todo(description);
+    }
+
+    /**
+     * Constructs a deadline from its command input.
+     */
+    private static Deadline createDeadline(String input) {
+        String details = input.trim().substring("deadline".length()).trim();
+        int byIndex = details.indexOf("/by");
+        String description = details.substring(0, byIndex).trim();
+        Event.DateTimeValue by = parseDateTime(details.substring(byIndex + 3).trim());
+        assert by != null : "A validated deadline should always contain a valid date or time";
+        return new Deadline(description, by.date(), by.time());
+    }
+
+    /**
+     * Constructs an event from its command input.
+     */
+    private static Event createEvent(String input) {
+        String details = input.trim().substring("event".length()).trim();
+        int fromIndex = details.indexOf("/from");
+        int toIndex = details.indexOf("/to");
+        String description = details.substring(0, fromIndex).trim();
+        Event.DateTimeValue from = parseDateTime(details.substring(fromIndex + 5, toIndex).trim());
+        Event.DateTimeValue to = parseDateTime(details.substring(toIndex + 3).trim());
+        assert from != null && to != null
+                : "A validated event should always contain valid start and end times";
+        return new Event(description, from, to);
     }
 }
