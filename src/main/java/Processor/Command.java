@@ -12,6 +12,8 @@ public enum Command {
     MARK,
     UNMARK,
     DELETE,
+    NEW,
+    OLD,
     BYE,
     UNKNOWN
 }

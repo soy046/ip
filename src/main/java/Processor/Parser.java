@@ -19,6 +19,29 @@ import ui.Strings;
  * Provides methods for recognising and validating chatbot commands.
  */
 public class Parser {
+    private static final int MAX_TASKS = 100;
+
+    private final String storageFilePath;
+    private PendingDuplicate pendingDuplicate;
+
+    /**
+     * Creates a parser that uses Tuesday's default save file.
+     */
+    public Parser() {
+        this(Storage.FILE_PATH);
+    }
+
+    /**
+     * Creates a parser that uses a specified save file.
+     *
+     * <p>This constructor has package access so processor tests can use an isolated temporary file.</p>
+     *
+     * @param storageFilePath the save file used when commands change tasks
+     */
+    Parser(String storageFilePath) {
+        this.storageFilePath = storageFilePath;
+    }
+
     /**
      * Identifies the task-creation command at the start of an input line.
      *
@@ -42,6 +65,8 @@ public class Parser {
             case "mark" -> Command.MARK;
             case "unmark" -> Command.UNMARK;
             case "delete" -> Command.DELETE;
+            case "new" -> Command.NEW;
+            case "old" -> Command.OLD;
             case "bye" -> Command.BYE;
             default -> Command.UNKNOWN;
         };
@@ -258,6 +283,23 @@ public class Parser {
      * @return the response to display to the user
      */
     public static String commandProcess(String input, TaskList tasks) {
+        return new Parser().processCommand(input, tasks);
+    }
+
+    /**
+     * Processes a command as part of this parser's conversation session.
+     *
+     * <p>A parser instance remembers a proposed duplicate task until the user chooses {@code new} or {@code old}.</p>
+     *
+     * @param input the command entered by the user
+     * @param tasks the task list
+     * @return the response to display to the user
+     */
+    public String processCommand(String input, TaskList tasks) {
+        if (pendingDuplicate != null) {
+            return processDuplicateResolution(input, tasks);
+        }
+
         Command command = getCommand(input);
 
         try {
@@ -268,7 +310,7 @@ public class Parser {
                 case DELETE -> processDeleteCommand(input, tasks);
                 case MARK, UNMARK -> processTaskStatusCommand(input, tasks, command);
                 case TODO, DEADLINE, EVENT -> processTaskCreationCommand(input, tasks, command);
-                case UNKNOWN -> throw new TuesdayExceptions.UnknownCommandException(input);
+                case NEW, OLD, UNKNOWN -> throw new TuesdayExceptions.UnknownCommandException(input);
             };
         } catch (TuesdayExceptions.NoDescriptionnException e) {
             return "please add description, sir!";
@@ -285,6 +327,58 @@ public class Parser {
         } catch (TuesdayExceptions.TaskNumberOutRangeException e) {
             return "Sir, this will cost too much time";
         }
+    }
+
+    /**
+     * Processes the user's answer to a pending duplicate prompt.
+     */
+    private String processDuplicateResolution(String input, TaskList tasks) {
+        String trimmedInput = input == null ? "" : input.trim();
+        if (getCommand(trimmedInput) == Command.BYE) {
+            pendingDuplicate = null;
+            return Strings.FAREWELL;
+        }
+        if ("old".equals(trimmedInput)) {
+            return keepExistingTask(tasks);
+        }
+        if ("new".equals(trimmedInput)) {
+            return keepProposedTask(tasks);
+        }
+        return Strings.DUPLICATE_CHOICE_INSTRUCTION;
+    }
+
+    /**
+     * Discards the proposed task and reports the unchanged list size.
+     */
+    private String keepExistingTask(TaskList tasks) {
+        Task existingTask = pendingDuplicate.existingTask();
+        pendingDuplicate = null;
+        return "Okay. I've kept this task:\n"
+                + "  " + existingTask + "\n"
+                + "You still have " + tasks.size() + " tasks in the list.";
+    }
+
+    /**
+     * Replaces the first matching task with the proposed task and saves the list.
+     */
+    private String keepProposedTask(TaskList tasks) {
+        PendingDuplicate duplicate = pendingDuplicate;
+        pendingDuplicate = null;
+
+        tasks.replace(duplicate.existingTaskIndex(), duplicate.proposedTask());
+        String response = "Got it. I've replaced this task:\n"
+                + "  " + duplicate.existingTask() + "\n"
+                + "with:\n"
+                + "  " + duplicate.proposedTask() + "\n"
+                + "You still have " + tasks.size() + " tasks in the list.";
+        try {
+            Storage.modifyData(storageFilePath, tasks);
+        } catch (IOException e) {
+            tasks.replace(duplicate.existingTaskIndex(), duplicate.existingTask());
+            return "Failed to save data! Unable to create the file, Sir!\n"
+                    + "The existing task was kept.";
+        }
+        return response;
     }
 
     /**
@@ -319,7 +413,7 @@ public class Parser {
     /**
      * Deletes the task selected by a valid delete command and saves the updated list.
      */
-    private static String processDeleteCommand(String input, TaskList tasks)
+    private String processDeleteCommand(String input, TaskList tasks)
             throws TuesdayExceptions.DeleteTaskNumberOutOfRangeException,
             TuesdayExceptions.UnknownCommandException {
         if (!isAvailableDelete(input, tasks)) {
@@ -334,7 +428,7 @@ public class Parser {
                 + "  " + removedTask + "\n"
                 + "Now you have " + tasks.size() + " tasks in the list.";
         try {
-            Storage.modifyData(Storage.FILE_PATH, tasks);
+            Storage.modifyData(storageFilePath, tasks);
         } catch (IOException e) {
             response = "Failed to save data! Unable to create the save file, Sir!\n" + response;
         }
@@ -344,7 +438,7 @@ public class Parser {
     /**
      * Marks or unmarks the selected task and saves its new status.
      */
-    private static String processTaskStatusCommand(String input, TaskList tasks, Command command)
+    private String processTaskStatusCommand(String input, TaskList tasks, Command command)
             throws TuesdayExceptions.MarkTaskNumberOutOfRangeException,
             TuesdayExceptions.UnknownCommandException {
         assert command == Command.MARK || command == Command.UNMARK
@@ -369,7 +463,7 @@ public class Parser {
         }
 
         try {
-            Storage.modifyData(Storage.FILE_PATH, tasks);
+            Storage.modifyData(storageFilePath, tasks);
         } catch (IOException e) {
             response = "Failed to save data! Unable to create the file, Sir!\n" + response;
         }
@@ -379,7 +473,7 @@ public class Parser {
     /**
      * Creates a task from a valid task-creation command and saves it.
      */
-    private static String processTaskCreationCommand(String input, TaskList tasks, Command command)
+    private String processTaskCreationCommand(String input, TaskList tasks, Command command)
             throws TuesdayExceptions.NoDescriptionnException,
             TuesdayExceptions.DeadlineMissingByDateException,
             TuesdayExceptions.EventMissingTimeException,
@@ -389,16 +483,26 @@ public class Parser {
             throw new TuesdayExceptions.UnknownCommandException(input);
         }
 
-        if (tasks.size() >= 100) {
+        if (tasks.size() >= MAX_TASKS) {
             throw new TuesdayExceptions.TaskNumberOutRangeException("");
         }
 
         Task task = createTask(input, command);
+        int duplicateIndex = tasks.indexOfDuplicate(task);
+        if (duplicateIndex >= 0) {
+            Task existingTask = tasks.get(duplicateIndex);
+            pendingDuplicate = new PendingDuplicate(task, existingTask, duplicateIndex);
+            return "I found an existing task with the same description:\n"
+                    + "  " + (duplicateIndex + 1) + "." + existingTask + "\n"
+                    + "Would you like to keep the new task or the old task?\n"
+                    + "Please reply with \"new\" or \"old\".";
+        }
+
         String response = "Got it. I've added this task:\n"
                 + "  " + task + "\n"
                 + "Now you have " + (tasks.size() + 1) + " tasks in the list.";
         try {
-            Storage.saveNewData(Storage.FILE_PATH, task.toString());
+            Storage.saveNewData(storageFilePath, task.toString());
         } catch (IOException e) {
             response = "Failed to save data! Unable to create the file, Sir\n" + response;
         }
@@ -451,5 +555,11 @@ public class Parser {
         assert from != null && to != null
                 : "A validated event should always contain valid start and end times";
         return new Event(description, from, to);
+    }
+
+    /**
+     * Stores the proposed task and the first existing task with the same description.
+     */
+    private record PendingDuplicate(Task proposedTask, Task existingTask, int existingTaskIndex) {
     }
 }

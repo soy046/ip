@@ -33,6 +33,7 @@ public class MainWindow extends AnchorPane {
     private Image tuesdayImage = new Image(this.getClass().getResourceAsStream("/images/Tuesday.png"));
     private Image userImage = new Image(this.getClass().getResourceAsStream("/images/TonyStark.png"));
     private TaskList tasks = new TaskList();
+    private Parser parser = new Parser();
 
     /**
      *  initializes the MainWindow
@@ -53,7 +54,7 @@ public class MainWindow extends AnchorPane {
     @FXML
     private void handleUserInput() {
         String input = userInput.getText();
-        String response = Parser.commandProcess(input, tasks);
+        String response = parser.processCommand(input, tasks);
         dialogContainer.getChildren().addAll(
                 DialogBox.getUserDialog(input, userImage),
                 DialogBox.getTuesdayDialog(response, tuesdayImage)
