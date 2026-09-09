@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.Scanner;
+import java.util.stream.Collectors;
 
 import task.Deadline;
 import task.Event;
@@ -80,10 +81,9 @@ public final class Storage {
             throw new IOException("Unable to create data directory.");
         }
 
-        String data = "";
-        for (int i = 0; i < tasks.size(); i++) {
-            data = data + tasks.get(i).toString() + System.lineSeparator();
-        }
+        String data = tasks.stream()
+                .map(task -> task.toString() + System.lineSeparator())
+                .collect(Collectors.joining());
 
         try (FileWriter writer = new FileWriter(file, false)) {
             writer.write(data);

@@ -1,6 +1,7 @@
 package task;
 
 import java.util.ArrayList;
+import java.util.stream.Stream;
 
 /**
  * Stores and manages the tasks used by Tuesday.
@@ -51,5 +52,14 @@ public class TaskList {
      */
     public int size() {
         return tasks.size();
+    }
+
+    /**
+     * Returns a sequential stream containing the stored tasks.
+     *
+     * @return a stream of tasks
+     */
+    public Stream<Task> stream() {
+        return tasks.stream();
     }
 }
