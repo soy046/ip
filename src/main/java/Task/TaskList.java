@@ -26,6 +26,32 @@ public class TaskList {
     }
 
     /**
+     * Finds the first task with the same normalized description as the supplied task.
+     *
+     * @param task the proposed task
+     * @return the zero-based index of the first duplicate, or -1 if none exists
+     */
+    public int indexOfDuplicate(Task task) {
+        for (int i = 0; i < tasks.size(); i++) {
+            if (tasks.get(i).hasSameDescription(task)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Replaces and returns the task at a zero-based index.
+     *
+     * @param index the task's zero-based index
+     * @param task the replacement task
+     * @return the replaced task
+     */
+    public Task replace(int index, Task task) {
+        return tasks.set(index, task);
+    }
+
+    /**
      * Removes and returns the task at a zero-based index.
      *
      * @param index the task's zero-based index

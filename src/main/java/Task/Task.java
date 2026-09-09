@@ -40,6 +40,31 @@ public class Task {
     }
 
     /**
+     * Checks whether another task has the same normalized description.
+     *
+     * <p>Task type, scheduling information, and completion status are deliberately ignored. Leading and trailing
+     * whitespace, repeated internal whitespace, and letter case do not affect the comparison.</p>
+     *
+     * @param other the task to compare with
+     * @return true if both tasks have the same normalized description
+     */
+    public boolean hasSameDescription(Task other) {
+        if (other == null) {
+            return false;
+        }
+        return normalizeDescription(this.name).equals(normalizeDescription(other.name));
+    }
+
+    /**
+     * Produces the description form used only for duplicate comparisons.
+     */
+    private static String normalizeDescription(String description) {
+        return description.strip()
+                .replaceAll("\\s+", " ")
+                .toLowerCase(Locale.ROOT);
+    }
+
+    /**
      * Returns the task's string representation.
      *
      * @return the task's string representation.
