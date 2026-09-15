@@ -8,3 +8,7 @@
     -fx-background-repeat: repeat-y;
     -fx-background-position: center top;
 }
+
+.conversation-background .dialog-text {
+    -fx-text-fill: #ffffff;
+}
