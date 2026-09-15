@@ -4,6 +4,8 @@ package ui;
  * Stores the default strings used by the application.
  */
 public class Strings {
+    /** Displays a save failure after the original task state has been restored. */
+    public static final String SAVE_FAILURE = "Unable to save your changes. Your tasks have not been changed.";
     /** Displays the farewell shown when the application exits. */
     public static final String FAREWELL = "Bye. Hope to see you again soon!";
     /** Displays the valid answers while waiting for the user to resolve a duplicate task. */

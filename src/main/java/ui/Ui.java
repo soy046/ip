@@ -1,6 +1,8 @@
 package ui;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.URL;
 
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -22,18 +24,31 @@ public class Ui extends Application {
     @Override
     public void start(Stage stage) {
         try {
-            FXMLLoader fxmlLoader = new FXMLLoader(Ui.class.getResource("/view/MainWindow.fxml"));
-            AnchorPane root = fxmlLoader.load();
+            AnchorPane root = loadMainWindow(Ui.class.getResource("/view/MainWindow.fxml"));
             Scene scene = new Scene(root);
 
             stage.setScene(scene);
             stage.setTitle("Tuesday");
-            stage.getIcons().add(new Image(Ui.class.getResource("/images/Tuesday.png").toExternalForm()));
+            URL icon = Ui.class.getResource("/images/Tuesday.png");
+            if (icon == null) {
+                throw new IllegalStateException("The Tuesday icon resource is missing.");
+            }
+            stage.getIcons().add(new Image(icon.toExternalForm()));
             stage.show();
             configureMinimumWindowSize(stage, scene, root);
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException | UncheckedIOException | IllegalStateException e) {
+            UiErrors.showFatal("Tuesday could not load its interface or saved tasks.", e);
         }
+    }
+
+    /**
+     * Loads the main layout only when the required resource is present.
+     */
+    static AnchorPane loadMainWindow(URL resource) throws IOException {
+        if (resource == null) {
+            throw new IllegalStateException("The main window layout resource is missing.");
+        }
+        return new FXMLLoader(resource).load();
     }
 
     /**

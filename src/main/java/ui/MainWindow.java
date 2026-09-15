@@ -1,6 +1,9 @@
 package ui;
 
-import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.NoSuchFileException;
+import java.util.function.BiConsumer;
 
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
@@ -38,7 +41,10 @@ public class MainWindow extends AnchorPane {
     private Image tuesdayImage = new Image(this.getClass().getResourceAsStream("/images/Tuesday.png"));
     private Image userImage = new Image(this.getClass().getResourceAsStream("/images/TonyStark.png"));
     private TaskList tasks = new TaskList();
-    private Parser parser = new Parser();
+    private final Parser parser;
+    private final String storageFilePath;
+    private final DialogFactory dialogFactory;
+    private final BiConsumer<String, Throwable> fatalErrorHandler;
 
     /**
      * The first visible message before a resize, or {@code null} when no message is visible.
@@ -76,6 +82,32 @@ public class MainWindow extends AnchorPane {
     private final Runnable resizePulseListener = this::handlePendingResize;
 
     /**
+     * Creates the main controller using the application's saved-task path.
+     */
+    public MainWindow() {
+        this(Storage.FILE_PATH);
+    }
+
+    /**
+     * Creates a controller that loads and saves using the same isolated path.
+     */
+    MainWindow(String storageFilePath) {
+        this(storageFilePath, (text, picture, isUser) -> isUser
+                ? DialogBox.getUserDialog(text, picture) : DialogBox.getTuesdayDialog(text, picture),
+                UiErrors::showFatal);
+    }
+
+    /**
+     * Supplies dialog creation and fatal reporting for deterministic UI failure tests.
+     */
+    MainWindow(String storageFilePath, DialogFactory dialogFactory, BiConsumer<String, Throwable> fatalErrorHandler) {
+        this.storageFilePath = storageFilePath;
+        this.parser = new Parser(storageFilePath);
+        this.dialogFactory = dialogFactory;
+        this.fatalErrorHandler = fatalErrorHandler;
+    }
+
+    /**
      * Initializes conversation sizing and resize tracking, then loads saved tasks.
      */
     @FXML
@@ -83,11 +115,22 @@ public class MainWindow extends AnchorPane {
         initializeConversationBackground();
         initializeResizeTracking();
 
+        tasks = loadTasks(storageFilePath);
+    }
+
+    /**
+     * Allows an empty first run but prevents editing after other load failures.
+     */
+    static TaskList loadTasks(String filePath) {
+        TaskList loadedTasks = new TaskList();
         try {
-            Storage.loadData(Storage.FILE_PATH, this.tasks);
-        } catch (FileNotFoundException e) {
-            // A missing save file is expected when the application runs for the first time.
+            Storage.loadData(filePath, loadedTasks);
+        } catch (NoSuchFileException e) {
+            // There is no saved data on the first run.
+        } catch (IOException e) {
+            throw new UncheckedIOException("Unable to load saved tasks.", e);
         }
+        return loadedTasks;
     }
 
     /**
@@ -213,9 +256,19 @@ public class MainWindow extends AnchorPane {
         String input = userInput.getText();
         String response = parser.processCommand(input, tasks);
 
-        dialogContainer.getChildren().addAll(
-                DialogBox.getUserDialog(input, userImage),
-                DialogBox.getTuesdayDialog(response, tuesdayImage));
+        DialogBox userDialog;
+        DialogBox tuesdayDialog;
+        try {
+            userDialog = dialogFactory.create(input, userImage, true);
+            tuesdayDialog = dialogFactory.create(response, tuesdayImage, false);
+        } catch (IllegalStateException e) {
+            userInput.setDisable(true);
+            sendButton.setDisable(true);
+            fatalErrorHandler.accept(
+                    "Tuesday could not display the conversation. Your command may already be saved.", e);
+            return;
+        }
+        dialogContainer.getChildren().addAll(userDialog, tuesdayDialog);
         userInput.clear();
         scrollToLatestMessage();
 
@@ -224,5 +277,21 @@ public class MainWindow extends AnchorPane {
             pause.setOnFinished(event -> Platform.exit());
             pause.play();
         }
+    }
+
+    /**
+     * Creates one side of a conversation without coupling error-handling tests to FXML failures.
+     */
+    @FunctionalInterface
+    interface DialogFactory {
+        /**
+         * Creates a user or Tuesday dialog.
+         *
+         * @param text the message to display
+         * @param picture the speaker's picture
+         * @param isUser whether the message was entered by the user
+         * @return the initialized dialog
+         */
+        DialogBox create(String text, Image picture, boolean isUser);
     }
 }

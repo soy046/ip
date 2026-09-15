@@ -19,6 +19,19 @@ public class StorageTest {
     private Path temporaryDirectory;
 
     @Test
+    public void loadData_overlappingEventMarkers_skipsRowAndContinues() throws IOException {
+        Path saveFile = temporaryDirectory.resolve("Tuesday.txt");
+        Files.writeString(saveFile, "[T][ ] before\n[E][ ] x (from: to: 10:00)\n[T][X] after\n");
+        TaskList tasks = new TaskList();
+
+        Storage.loadData(saveFile.toString(), tasks);
+
+        assertEquals(2, tasks.size());
+        assertEquals("[T][ ] before", tasks.get(0).toString());
+        assertEquals("[T][X] after", tasks.get(1).toString());
+    }
+
+    @Test
     public void loadData_fileContainsDuplicates_preservesAllDuplicates() throws IOException {
         Path saveFile = temporaryDirectory.resolve("Tuesday.txt");
         Files.writeString(saveFile, "[T][ ] Read Book" + System.lineSeparator()

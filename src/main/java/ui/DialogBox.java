@@ -1,6 +1,7 @@
 package ui;
 
 import java.io.IOException;
+import java.net.URL;
 import java.util.Collections;
 
 import javafx.collections.FXCollections;
@@ -42,7 +43,10 @@ public class DialogBox extends HBox {
             fxmlLoader.setRoot(this);
             fxmlLoader.load();
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new IllegalStateException("Unable to load the dialog layout.", e);
+        }
+        if (dialog == null || displayPicture == null) {
+            throw new IllegalStateException("The dialog layout is missing required controls.");
         }
 
         dialog.setText(text);
