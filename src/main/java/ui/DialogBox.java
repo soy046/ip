@@ -1,6 +1,7 @@
 package ui;
 
 import java.io.IOException;
+import java.net.URL;
 import java.util.Collections;
 
 import javafx.collections.FXCollections;
@@ -25,13 +26,26 @@ public class DialogBox extends HBox {
     private ImageView displayPicture;
 
     private DialogBox(String text, Image img) {
+        this(text, img, MainWindow.class.getResource("/view/DialogBox.fxml"));
+    }
+
+    /**
+     * Loads a dialog from a supplied resource, allowing malformed-resource tests.
+     */
+    DialogBox(String text, Image img, URL resource) {
+        if (resource == null) {
+            throw new IllegalStateException("The dialog layout resource is missing.");
+        }
         try {
-            FXMLLoader fxmlLoader = new FXMLLoader(MainWindow.class.getResource("/view/DialogBox.fxml"));
+            FXMLLoader fxmlLoader = new FXMLLoader(resource);
             fxmlLoader.setController(this);
             fxmlLoader.setRoot(this);
             fxmlLoader.load();
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new IllegalStateException("Unable to load the dialog layout.", e);
+        }
+        if (dialog == null || displayPicture == null) {
+            throw new IllegalStateException("The dialog layout is missing required controls.");
         }
 
         dialog.setText(text);
@@ -49,7 +63,8 @@ public class DialogBox extends HBox {
     }
 
     /**
-     * creates the dialog box for the user
+     * Creates the dialog box for the user.
+     *
      * @param text the text displayed in the user box
      * @param img the image for the user
      * @return a dialog box for user
@@ -59,10 +74,11 @@ public class DialogBox extends HBox {
     }
 
     /**
-     * creates the dialog box for Tuesday
+     * Creates the dialog box for Tuesday.
+     *
      * @param text the text displayed in the Tuesday box
      * @param img the image of Tuesday
-     * @return a dialog bo for Tuesday
+     * @return a dialog box for Tuesday
      */
     public static DialogBox getTuesdayDialog(String text, Image img) {
         var db = new DialogBox(text, img);

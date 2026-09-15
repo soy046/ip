@@ -3,7 +3,8 @@ package processor;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.format.DateTimeParseException;
+import java.time.YearMonth;
+import java.util.Objects;
 import java.util.Scanner;
 
 import exceptions.TuesdayExceptions;
@@ -16,7 +17,7 @@ import ui.Strings;
 
 
 /**
- * Provides methods for recognising and validating chatbot commands.
+ * Provides methods for recognizing and validating chatbot commands.
  */
 public class Parser {
     private static final int MAX_TASKS = 100;
@@ -34,11 +35,11 @@ public class Parser {
     /**
      * Creates a parser that uses a specified save file.
      *
-     * <p>This constructor has package access so processor tests can use an isolated temporary file.</p>
+     * The same path should be used when loading the task list.
      *
      * @param storageFilePath the save file used when commands change tasks
      */
-    Parser(String storageFilePath) {
+    public Parser(String storageFilePath) {
         this.storageFilePath = storageFilePath;
     }
 
@@ -77,15 +78,22 @@ public class Parser {
      *
      * @param input the complete line entered by the user
      * @return true if the input is a valid todo, deadline, or event command
+     * @throws TuesdayExceptions.NoDescriptionnException if the description is missing
+     * @throws TuesdayExceptions.DeadlineMissingByDateException if the deadline is missing or invalid
+     * @throws TuesdayExceptions.EventMissingTimeException if an event time section is missing
      */
     public static boolean isAvailableTaskCommand(String input)
             throws TuesdayExceptions.NoDescriptionnException,
             TuesdayExceptions.DeadlineMissingByDateException,
             TuesdayExceptions.EventMissingTimeException {
-        return switch (getCommand(input)) {
-            case TODO -> hasDescription(input);
-            case DEADLINE -> isValidDeadline(input);
-            case EVENT -> isValidEvent(input);
+        ValidationError error = validateTaskCreation(input, getCommand(input));
+        if (error == null) {
+            return true;
+        }
+        return switch (error.code()) {
+            case MISSING_DESCRIPTION -> throw new TuesdayExceptions.NoDescriptionnException(error.detail());
+            case MISSING_DEADLINE -> throw new TuesdayExceptions.DeadlineMissingByDateException(error.detail());
+            case MISSING_EVENT_TIME -> throw new TuesdayExceptions.EventMissingTimeException(error.detail());
             default -> false;
         };
     }
@@ -100,26 +108,12 @@ public class Parser {
      */
     public static boolean isAvailableMark(String input, TaskList tasks)
             throws TuesdayExceptions.MarkTaskNumberOutOfRangeException {
-        Scanner scanner = new Scanner(input);
-
-        if (!scanner.hasNext()) {
-            return false;
+        Objects.requireNonNull(input);
+        ValidationError error = validateTaskIndex(input, tasks, Command.MARK).error();
+        if (error != null && error.code() == ValidationCode.MARK_OUT_OF_RANGE) {
+            throw new TuesdayExceptions.MarkTaskNumberOutOfRangeException(error.detail());
         }
-
-        Command command = getCommand(scanner.next());
-        if (command != Command.MARK && command != Command.UNMARK) {
-            return false;
-        }
-
-        if (!scanner.hasNextInt()) {
-            return false;
-        }
-
-        int target = scanner.nextInt();
-        if (target <= 0 || target > tasks.size()) {
-            throw new TuesdayExceptions.MarkTaskNumberOutOfRangeException(String.valueOf(target));
-        }
-        return !scanner.hasNext();
+        return error == null;
     }
 
     /**
@@ -132,66 +126,99 @@ public class Parser {
      */
     public static boolean isAvailableDelete(String input, TaskList tasks)
             throws TuesdayExceptions.DeleteTaskNumberOutOfRangeException {
-        Scanner scanner = new Scanner(input);
-
-        if (!scanner.hasNext() || getCommand(scanner.next()) != Command.DELETE
-                || !scanner.hasNextInt()) {
-            return false;
+        Objects.requireNonNull(input);
+        ValidationError error = validateTaskIndex(input, tasks, Command.DELETE).error();
+        if (error != null && error.code() == ValidationCode.DELETE_OUT_OF_RANGE) {
+            throw new TuesdayExceptions.DeleteTaskNumberOutOfRangeException(error.detail());
         }
-
-        int target = scanner.nextInt();
-        if (target <= 0 || target > tasks.size()) {
-            throw new TuesdayExceptions.DeleteTaskNumberOutOfRangeException(String.valueOf(target));
-        }
-        return !scanner.hasNext();
+        return error == null;
     }
 
     /**
-     * Checks that a todo command has text after the command word.
+     * Returns a validated zero-based index or an error before any task is accessed.
      */
-    private static boolean hasDescription(String input) throws TuesdayExceptions.NoDescriptionnException {
+    private static IndexValidation validateTaskIndex(String input, TaskList tasks, Command command) {
+        ValidationError unknown = new ValidationError(ValidationCode.UNKNOWN_COMMAND, input);
+        try (Scanner scanner = new Scanner(input)) {
+            if (!scanner.hasNext()) {
+                return new IndexValidation(-1, unknown);
+            }
+            Command actualCommand = getCommand(scanner.next());
+            boolean isMatchingCommand = command == Command.DELETE
+                    ? actualCommand == Command.DELETE
+                    : actualCommand == Command.MARK || actualCommand == Command.UNMARK;
+            if (!isMatchingCommand || !scanner.hasNextInt()) {
+                return new IndexValidation(-1, unknown);
+            }
+            int target = scanner.nextInt();
+            if (target <= 0 || target > tasks.size()) {
+                ValidationCode code = command == Command.DELETE
+                        ? ValidationCode.DELETE_OUT_OF_RANGE : ValidationCode.MARK_OUT_OF_RANGE;
+                return new IndexValidation(-1, new ValidationError(code, String.valueOf(target)));
+            }
+            if (scanner.hasNext()) {
+                return new IndexValidation(-1, unknown);
+            }
+            return new IndexValidation(target - 1, null);
+        }
+    }
+
+    /**
+     * Returns a creation error, or null when all required fields are valid.
+     */
+    private static ValidationError validateTaskCreation(String input, Command command) {
+        return switch (command) {
+            case TODO -> validateTodo(input);
+            case DEADLINE -> validateDeadline(input);
+            case EVENT -> validateEvent(input);
+            default -> new ValidationError(ValidationCode.UNKNOWN_COMMAND, input);
+        };
+    }
+
+    /**
+     * Returns a missing-description error, or null for a valid todo.
+     */
+    private static ValidationError validateTodo(String input) {
         if (input.trim().length() <= "todo".length()) {
-            throw new TuesdayExceptions.NoDescriptionnException("todo");
+            return new ValidationError(ValidationCode.MISSING_DESCRIPTION, "todo");
         }
-        return true;
+        return null;
     }
 
     /**
-     * Checks that a deadline has exactly one non-empty /by section.
+     * Returns a deadline validation error, or null when its required description and value are valid.
      */
-    private static boolean isValidDeadline(String input)
-            throws TuesdayExceptions.NoDescriptionnException,
-            TuesdayExceptions.DeadlineMissingByDateException {
+    private static ValidationError validateDeadline(String input) {
         String details = input.trim().substring("deadline".length()).trim();
         int byIndex = details.indexOf("/by");
 
         if (details.isEmpty() || (byIndex >= 0 && details.substring(0, byIndex).trim().isEmpty())) {
-            throw new TuesdayExceptions.NoDescriptionnException("deadline");
+            return new ValidationError(ValidationCode.MISSING_DESCRIPTION, "deadline");
         }
 
         if (byIndex <= 0 || details.substring(byIndex + 3).trim().isEmpty()) {
-            throw new TuesdayExceptions.DeadlineMissingByDateException("");
+            return new ValidationError(ValidationCode.MISSING_DEADLINE, "");
         }
         String deadline = details.substring(byIndex + 3).trim();
         if (parseDateTime(deadline) == null) {
-            throw new TuesdayExceptions.DeadlineMissingByDateException(deadline);
+            return new ValidationError(ValidationCode.MISSING_DEADLINE, deadline);
         }
-        return countOccurrences(details, "/by") == 1
-                && !deadline.contains("/");
+        if (countOccurrences(details, "/by") != 1 || deadline.contains("/")) {
+            return new ValidationError(ValidationCode.UNKNOWN_COMMAND, input);
+        }
+        return null;
     }
 
     /**
-     * Checks that an event has exactly one /from section and one /to section.
+     * Returns an event validation error, or null when its description and both time sections are valid.
      */
-    private static boolean isValidEvent(String input)
-            throws TuesdayExceptions.NoDescriptionnException,
-            TuesdayExceptions.EventMissingTimeException {
+    private static ValidationError validateEvent(String input) {
         String details = input.trim().substring("event".length()).trim();
         int fromIndex = details.indexOf("/from");
         int toIndex = details.indexOf("/to");
 
         if (details.isEmpty() || fromIndex == 0) {
-            throw new TuesdayExceptions.NoDescriptionnException("event");
+            return new ValidationError(ValidationCode.MISSING_DESCRIPTION, "event");
         }
 
         if (fromIndex < 0 || toIndex < 0 || toIndex <= fromIndex
@@ -199,13 +226,16 @@ public class Parser {
                 || countOccurrences(details, "/to") != 1
                 || details.substring(fromIndex + 5, toIndex).trim().isEmpty()
                 || details.substring(toIndex + 3).trim().isEmpty()) {
-            throw new TuesdayExceptions.EventMissingTimeException("event");
+            return new ValidationError(ValidationCode.MISSING_EVENT_TIME, "event");
         }
 
         String startTime = details.substring(fromIndex + 5, toIndex).trim();
         String endTime = details.substring(toIndex + 3).trim();
-        return !startTime.contains("/") && !endTime.contains("/")
-                && parseDateTime(startTime) != null && parseDateTime(endTime) != null;
+        if (startTime.contains("/") || endTime.contains("/")
+                || parseDateTime(startTime) == null || parseDateTime(endTime) == null) {
+            return new ValidationError(ValidationCode.UNKNOWN_COMMAND, input);
+        }
+        return null;
     }
 
     /**
@@ -230,12 +260,10 @@ public class Parser {
         if (!value.matches("\\d{4}-\\d{2}-\\d{2}")) {
             return false;
         }
-        try {
-            LocalDate.parse(value);
-            return true;
-        } catch (DateTimeParseException e) {
-            return false;
-        }
+        int year = Integer.parseInt(value.substring(0, 4));
+        int month = Integer.parseInt(value.substring(5, 7));
+        int day = Integer.parseInt(value.substring(8, 10));
+        return month >= 1 && month <= 12 && YearMonth.of(year, month).isValidDay(day);
     }
 
     /**
@@ -245,12 +273,9 @@ public class Parser {
         if (!value.matches("\\d{2}:\\d{2}")) {
             return false;
         }
-        try {
-            LocalTime.parse(value);
-            return true;
-        } catch (DateTimeParseException e) {
-            return false;
-        }
+        int hour = Integer.parseInt(value.substring(0, 2));
+        int minute = Integer.parseInt(value.substring(3, 5));
+        return hour < 24 && minute < 60;
     }
 
     /**
@@ -302,31 +327,29 @@ public class Parser {
 
         Command command = getCommand(input);
 
-        try {
-            return switch (command) {
-                case BYE -> Strings.FAREWELL;
-                case LIST -> processListCommand(tasks);
-                case FIND -> processFindCommand(input, tasks);
-                case DELETE -> processDeleteCommand(input, tasks);
-                case MARK, UNMARK -> processTaskStatusCommand(input, tasks, command);
-                case TODO, DEADLINE, EVENT -> processTaskCreationCommand(input, tasks, command);
-                case NEW, OLD, UNKNOWN -> throw new TuesdayExceptions.UnknownCommandException(input);
-            };
-        } catch (TuesdayExceptions.NoDescriptionnException e) {
-            return "please add description, sir!";
-        } catch (TuesdayExceptions.DeadlineMissingByDateException e) {
-            return "please add a deadline date, sir!";
-        } catch (TuesdayExceptions.EventMissingTimeException e) {
-            return "please add both starting and ending times, sir!";
-        } catch (TuesdayExceptions.MarkTaskNumberOutOfRangeException e) {
-            return "Sir, that mark number is out of range.";
-        } catch (TuesdayExceptions.DeleteTaskNumberOutOfRangeException e) {
-            return "Sir, that delete number is out of range.";
-        } catch (TuesdayExceptions.UnknownCommandException e) {
-            return "Sir, what do you mean by " + e.getMessage();
-        } catch (TuesdayExceptions.TaskNumberOutRangeException e) {
-            return "Sir, this will cost too much time";
-        }
+        return switch (command) {
+            case BYE -> Strings.FAREWELL;
+            case LIST -> processListCommand(tasks);
+            case FIND -> processFindCommand(input, tasks);
+            case DELETE -> processDeleteCommand(input, tasks);
+            case MARK, UNMARK -> processTaskStatusCommand(input, tasks, command);
+            case TODO, DEADLINE, EVENT -> processTaskCreationCommand(input, tasks, command);
+            case NEW, OLD, UNKNOWN -> "Sir, what do you mean by " + input;
+        };
+    }
+
+    /**
+     * Converts an expected validation failure into its existing user-facing response.
+     */
+    private static String formatValidationError(ValidationError error, String originalInput) {
+        return switch (error.code()) {
+            case MISSING_DESCRIPTION -> "please add description, sir!";
+            case MISSING_DEADLINE -> "please add a deadline date, sir!";
+            case MISSING_EVENT_TIME -> "please add both starting and ending times, sir!";
+            case MARK_OUT_OF_RANGE -> "Sir, that mark number is out of range.";
+            case DELETE_OUT_OF_RANGE -> "Sir, that delete number is out of range.";
+            case UNKNOWN_COMMAND -> "Sir, what do you mean by " + originalInput;
+        };
     }
 
     /**
@@ -413,24 +436,21 @@ public class Parser {
     /**
      * Deletes the task selected by a valid delete command and saves the updated list.
      */
-    private String processDeleteCommand(String input, TaskList tasks)
-            throws TuesdayExceptions.DeleteTaskNumberOutOfRangeException,
-            TuesdayExceptions.UnknownCommandException {
-        if (!isAvailableDelete(input, tasks)) {
-            throw new TuesdayExceptions.UnknownCommandException(input);
+    private String processDeleteCommand(String input, TaskList tasks) {
+        IndexValidation validation = validateTaskIndex(input, tasks, Command.DELETE);
+        if (validation.error() != null) {
+            return formatValidationError(validation.error(), input);
         }
 
-        Scanner scanner = new Scanner(input);
-        scanner.next();
-        int target = scanner.nextInt();
-        Task removedTask = tasks.remove(target - 1);
+        Task removedTask = tasks.remove(validation.index());
         String response = "Noted. I've removed this task:\n"
                 + "  " + removedTask + "\n"
                 + "Now you have " + tasks.size() + " tasks in the list.";
         try {
             Storage.modifyData(storageFilePath, tasks);
         } catch (IOException e) {
-            response = "Failed to save data! Unable to create the save file, Sir!\n" + response;
+            tasks.add(validation.index(), removedTask);
+            return Strings.SAVE_FAILURE;
         }
         return response;
     }
@@ -438,20 +458,17 @@ public class Parser {
     /**
      * Marks or unmarks the selected task and saves its new status.
      */
-    private String processTaskStatusCommand(String input, TaskList tasks, Command command)
-            throws TuesdayExceptions.MarkTaskNumberOutOfRangeException,
-            TuesdayExceptions.UnknownCommandException {
+    private String processTaskStatusCommand(String input, TaskList tasks, Command command) {
         assert command == Command.MARK || command == Command.UNMARK
                 : "A task status command should always be mark or unmark";
 
-        if (!isAvailableMark(input, tasks)) {
-            throw new TuesdayExceptions.UnknownCommandException(input);
+        IndexValidation validation = validateTaskIndex(input, tasks, command);
+        if (validation.error() != null) {
+            return formatValidationError(validation.error(), input);
         }
 
-        Scanner scanner = new Scanner(input);
-        scanner.next();
-        int target = scanner.nextInt();
-        Task task = tasks.get(target - 1);
+        Task task = tasks.get(validation.index());
+        boolean wasDone = task.isDone();
 
         String response;
         if (command == Command.MARK) {
@@ -465,7 +482,12 @@ public class Parser {
         try {
             Storage.modifyData(storageFilePath, tasks);
         } catch (IOException e) {
-            response = "Failed to save data! Unable to create the file, Sir!\n" + response;
+            if (wasDone) {
+                task.mark();
+            } else {
+                task.unMark();
+            }
+            return Strings.SAVE_FAILURE;
         }
         return response;
     }
@@ -473,18 +495,14 @@ public class Parser {
     /**
      * Creates a task from a valid task-creation command and saves it.
      */
-    private String processTaskCreationCommand(String input, TaskList tasks, Command command)
-            throws TuesdayExceptions.NoDescriptionnException,
-            TuesdayExceptions.DeadlineMissingByDateException,
-            TuesdayExceptions.EventMissingTimeException,
-            TuesdayExceptions.TaskNumberOutRangeException,
-            TuesdayExceptions.UnknownCommandException {
-        if (!isAvailableTaskCommand(input)) {
-            throw new TuesdayExceptions.UnknownCommandException(input);
+    private String processTaskCreationCommand(String input, TaskList tasks, Command command) {
+        ValidationError error = validateTaskCreation(input, command);
+        if (error != null) {
+            return formatValidationError(error, input);
         }
 
         if (tasks.size() >= MAX_TASKS) {
-            throw new TuesdayExceptions.TaskNumberOutRangeException("");
+            return "Sir, this will cost too much time";
         }
 
         Task task = createTask(input, command);
@@ -504,7 +522,7 @@ public class Parser {
         try {
             Storage.saveNewData(storageFilePath, task.toString());
         } catch (IOException e) {
-            response = "Failed to save data! Unable to create the file, Sir\n" + response;
+            return Strings.SAVE_FAILURE;
         }
         tasks.add(task);
         return response;
@@ -561,5 +579,29 @@ public class Parser {
      * Stores the proposed task and the first existing task with the same description.
      */
     private record PendingDuplicate(Task proposedTask, Task existingTask, int existingTaskIndex) {
+    }
+
+    /**
+     * Identifies expected input failures without throwing during command processing.
+     */
+    private enum ValidationCode {
+        UNKNOWN_COMMAND,
+        MISSING_DESCRIPTION,
+        MISSING_DEADLINE,
+        MISSING_EVENT_TIME,
+        MARK_OUT_OF_RANGE,
+        DELETE_OUT_OF_RANGE
+    }
+
+    /**
+     * Keeps the failure category and payload used by the public exception-based adapters.
+     */
+    private record ValidationError(ValidationCode code, String detail) {
+    }
+
+    /**
+     * Holds a valid zero-based index, or -1 and a non-null error on failure.
+     */
+    private record IndexValidation(int index, ValidationError error) {
     }
 }

@@ -1,13 +1,17 @@
 package processor;
 
+import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
-import java.util.Scanner;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 
 import task.Deadline;
@@ -32,16 +36,29 @@ public final class Storage {
      *
      * @param filePath the path of the saved task file
      * @param tasks the list to which loaded tasks are added
-     * @throws FileNotFoundException if the save file cannot be found
+     * @throws NoSuchFileException if the save file does not exist
+     * @throws IOException if opening, reading, or closing the save file fails
      */
-    public static void loadData(String filePath, TaskList tasks) throws FileNotFoundException {
-        try (Scanner scanner = new Scanner(new File(filePath))) {
-            while (scanner.hasNextLine()) {
-                Task task = toTask(scanner.nextLine());
+    public static void loadData(String filePath, TaskList tasks) throws IOException {
+        loadData(tasks, () -> Files.newBufferedReader(Path.of(filePath), Charset.defaultCharset()));
+    }
+
+    /**
+     * Stages loaded tasks until reading and closing succeed, leaving the caller unchanged on failure.
+     */
+    static void loadData(TaskList tasks, ReaderSource source) throws IOException {
+        ArrayList<Task> loadedTasks = new ArrayList<>();
+        try (BufferedReader reader = source.open()) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                Task task = toTask(line);
                 if (task != null) {
-                    tasks.add(task);
+                    loadedTasks.add(task);
                 }
             }
+        }
+        for (Task task : loadedTasks) {
+            tasks.add(task);
         }
     }
 
@@ -53,17 +70,17 @@ public final class Storage {
      * @throws IOException if the data cannot be saved
      */
     public static void saveNewData(String filePath, String data) throws IOException {
-        File file = new File(filePath);
-        File parent = file.getParentFile();
-
-        if (parent != null && !parent.exists() && !parent.mkdirs()) {
-            throw new IOException("Unable to create data directory.");
+        Path file = Path.of(filePath);
+        byte[] existing;
+        try {
+            existing = Files.readAllBytes(file);
+        } catch (NoSuchFileException exception) {
+            existing = new byte[0];
         }
-
-        try (FileWriter writer = new FileWriter(file, true)) {
-            writer.write(data);
-            writer.write(System.lineSeparator());
-        }
+        byte[] addition = (data + System.lineSeparator()).getBytes(Charset.defaultCharset());
+        byte[] combined = Arrays.copyOf(existing, existing.length + addition.length);
+        System.arraycopy(addition, 0, combined, existing.length, addition.length);
+        new AtomicFileWriter().write(file, combined);
     }
 
     /**
@@ -74,20 +91,11 @@ public final class Storage {
      * @throws IOException if the data cannot be saved
      */
     public static void modifyData(String filePath, TaskList tasks) throws IOException {
-        File file = new File(filePath);
-        File parent = file.getParentFile();
-
-        if (parent != null && !parent.exists() && !parent.mkdirs()) {
-            throw new IOException("Unable to create data directory.");
-        }
-
         String data = tasks.stream()
                 .map(task -> task.toString() + System.lineSeparator())
                 .collect(Collectors.joining());
 
-        try (FileWriter writer = new FileWriter(file, false)) {
-            writer.write(data);
-        }
+        new AtomicFileWriter().write(Path.of(filePath), data.getBytes(Charset.defaultCharset()));
     }
 
     /**
@@ -95,25 +103,21 @@ public final class Storage {
      */
     private static Event.DateTimeValue parseSavedDateTime(String value) {
         try {
-            return new Event.DateTimeValue(
-                    LocalDate.parse(value, Event.DATE_FORMATTER), null);
-        } catch (DateTimeParseException dateException) {
-            try {
-                return new Event.DateTimeValue(
-                        null, LocalTime.parse(value, Event.TIME_FORMATTER));
-            } catch (DateTimeParseException timeException) {
-                int separator = value.lastIndexOf(' ');
-                if (separator <= 0) {
-                    return null;
-                }
-                try {
-                    return new Event.DateTimeValue(
-                            LocalDate.parse(value.substring(0, separator), Event.DATE_FORMATTER),
-                            LocalTime.parse(value.substring(separator + 1), Event.TIME_FORMATTER));
-                } catch (DateTimeParseException combinedException) {
-                    return null;
-                }
+            if (!value.contains(":")) {
+                return new Event.DateTimeValue(LocalDate.parse(value, Event.DATE_FORMATTER), null);
             }
+            int separator = value.lastIndexOf(' ');
+            if (separator < 0) {
+                return new Event.DateTimeValue(null, LocalTime.parse(value, Event.TIME_FORMATTER));
+            }
+            if (separator == 0 || separator == value.length() - 1) {
+                return null;
+            }
+            return new Event.DateTimeValue(
+                    LocalDate.parse(value.substring(0, separator), Event.DATE_FORMATTER),
+                    LocalTime.parse(value.substring(separator + 1), Event.TIME_FORMATTER));
+        } catch (DateTimeParseException exception) {
+            return null;
         }
     }
 
@@ -216,7 +220,7 @@ public final class Storage {
         int fromIndex = details.indexOf(fromMarker);
         int toIndex = details.lastIndexOf(toMarker);
 
-        if (fromIndex < 0 || toIndex <= fromIndex || !details.endsWith(")")) {
+        if (fromIndex < 0 || toIndex < fromIndex + fromMarker.length() || !details.endsWith(")")) {
             return null;
         }
 
@@ -233,5 +237,19 @@ public final class Storage {
             return null;
         }
         return new Event(description, start, end);
+    }
+
+    /**
+     * Opens a reader, allowing tests to reproduce failures during reading and closing.
+     */
+    @FunctionalInterface
+    interface ReaderSource {
+        /**
+         * Opens the input whose ownership transfers to the loader.
+         *
+         * @return the reader to consume and close
+         * @throws IOException if opening fails
+         */
+        BufferedReader open() throws IOException;
     }
 }

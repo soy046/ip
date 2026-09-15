@@ -26,6 +26,16 @@ public class TaskList {
     }
 
     /**
+     * Inserts a task at a zero-based index, preserving the order of surrounding tasks.
+     *
+     * @param index the insertion position
+     * @param task the task to insert
+     */
+    public void add(int index, Task task) {
+        tasks.add(index, task);
+    }
+
+    /**
      * Finds the first task with the same normalized description as the supplied task.
      *
      * @param task the proposed task
