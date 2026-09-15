@@ -12,3 +12,21 @@
 .conversation-background .dialog-text {
     -fx-text-fill: #ffffff;
 }
+
+.user-dialog {
+    -fx-padding: 6px 5px;
+}
+
+.user-dialog .dialog-text {
+    -fx-font-size: 13px;
+    -fx-font-weight: normal;
+}
+
+.tuesday-dialog {
+    -fx-padding: 12px 5px;
+}
+
+.tuesday-dialog .dialog-text {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
