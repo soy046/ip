@@ -5,6 +5,7 @@ import java.io.IOException;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
 import javafx.scene.layout.AnchorPane;
 import javafx.stage.Stage;
 
@@ -14,6 +15,7 @@ import javafx.stage.Stage;
 public class Ui extends Application {
     /**
      * Opens the application at its preferred size and sets the minimum usable window size.
+     * Displays the Tuesday name and icon in the window title bar.
      *
      * @param stage The primary application window supplied by JavaFX.
      */
@@ -25,6 +27,8 @@ public class Ui extends Application {
             Scene scene = new Scene(root);
 
             stage.setScene(scene);
+            stage.setTitle("Tuesday");
+            stage.getIcons().add(new Image(Ui.class.getResource("/images/Tuesday.png").toExternalForm()));
             stage.show();
             configureMinimumWindowSize(stage, scene, root);
         } catch (IOException e) {
