@@ -8,6 +8,7 @@
 
 <AnchorPane minHeight="300.0" minWidth="300.0"
             prefHeight="600.0" prefWidth="400.0"
+            stylesheets="@main.css"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="ui.MainWindow">
@@ -27,15 +28,18 @@
                 prefWidth="76.0"
                 text="Send"
                 AnchorPane.bottomAnchor="1.0" AnchorPane.rightAnchor="0.0" />
+        <!-- Fractional viewport heights must not round up and create a scrollbar for empty content. -->
         <ScrollPane fx:id="scrollPane"
+                    styleClass="conversation-scroll"
                     hbarPolicy="NEVER"
                     vbarPolicy="AS_NEEDED"
                     fitToWidth="true" fitToHeight="false"
+                    snapToPixel="false"
                     minHeight="0.0" minWidth="0.0"
                     AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="43.0"
                     AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0">
             <content>
-                <VBox fx:id="dialogContainer" minWidth="0.0" minHeight="-Infinity" />
+                <VBox fx:id="dialogContainer" styleClass="conversation-background" minWidth="0.0" />
             </content>
         </ScrollPane>
     </children>

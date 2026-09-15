@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
+import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.Parent;
@@ -75,10 +76,11 @@ public class MainWindow extends AnchorPane {
     private final Runnable resizePulseListener = this::handlePendingResize;
 
     /**
-     * Initializes resize tracking and loads saved tasks.
+     * Initializes conversation sizing and resize tracking, then loads saved tasks.
      */
     @FXML
     public void initialize() {
+        initializeConversationBackground();
         initializeResizeTracking();
 
         try {
@@ -86,6 +88,16 @@ public class MainWindow extends AnchorPane {
         } catch (FileNotFoundException e) {
             // A missing save file is expected when the application runs for the first time.
         }
+    }
+
+    /**
+     * Sets the minimum conversation height to fill the scroll viewport.
+     * Allows longer conversations to grow beyond the viewport and scroll normally.
+     */
+    private void initializeConversationBackground() {
+        dialogContainer.minHeightProperty().bind(
+                Bindings.createDoubleBinding(() -> scrollPane.getViewportBounds().getHeight(),
+                        scrollPane.viewportBoundsProperty()));
     }
 
     /**
