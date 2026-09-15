@@ -203,22 +203,34 @@ public class MainWindow extends AnchorPane {
         try {
             captureReadingPosition();
             isResizePending = false;
-
-            Parent root = scene.getRoot();
-            root.applyCss();
-            root.layout();
-
-            // A scrollbar appearing or disappearing can require another pass to settle the text width.
-            root.layout();
-
-            if (isScrollToBottomPending) {
-                scrollPane.setVvalue(scrollPane.getVmax());
-                isScrollToBottomPending = false;
-            } else {
-                restoreReadingPosition();
-            }
+            settleLayout(scene);
+            restoreScrollAfterLayout();
         } finally {
             isHandlingResize = false;
+        }
+    }
+
+    /**
+     * Settles wrapping and scrollbar changes before the scroll position is restored.
+     */
+    private static void settleLayout(Scene scene) {
+        Parent root = scene.getRoot();
+        root.applyCss();
+        root.layout();
+
+        // A scrollbar appearing or disappearing can require another pass to settle the text width.
+        root.layout();
+    }
+
+    /**
+     * Reveals a newly submitted response or restores the position of the message being read.
+     */
+    private void restoreScrollAfterLayout() {
+        if (isScrollToBottomPending) {
+            scrollPane.setVvalue(scrollPane.getVmax());
+            isScrollToBottomPending = false;
+        } else {
+            restoreReadingPosition();
         }
     }
 
@@ -256,28 +268,52 @@ public class MainWindow extends AnchorPane {
     private void handleUserInput() {
         String input = userInput.getText();
         String response = parser.processCommand(input, tasks);
+        if (!displayConversation(input, response)) {
+            return;
+        }
+        if (Parser.getCommand(input) == Command.BYE) {
+            scheduleExit();
+        }
+    }
 
+    /**
+     * Displays both sides of a conversation only after both dialogs have been created successfully.
+     *
+     * @return True after displaying the conversation, or false after reporting a dialog failure.
+     */
+    private boolean displayConversation(String input, String response) {
         DialogBox userDialog;
         DialogBox tuesdayDialog;
         try {
             userDialog = dialogFactory.create(input, userImage, true);
             tuesdayDialog = dialogFactory.create(response, tuesdayImage, false);
         } catch (IllegalStateException e) {
-            userInput.setDisable(true);
-            sendButton.setDisable(true);
-            fatalErrorHandler.accept(
-                    "Tuesday could not display the conversation. Your command may already be saved.", e);
-            return;
+            handleConversationFailure(e);
+            return false;
         }
         dialogContainer.getChildren().addAll(userDialog, tuesdayDialog);
         userInput.clear();
         scrollToLatestMessage();
+        return true;
+    }
 
-        if (Parser.getCommand(input) == Command.BYE) {
-            PauseTransition pause = new PauseTransition(Duration.seconds(2));
-            pause.setOnFinished(event -> Platform.exit());
-            pause.play();
-        }
+    /**
+     * Stops input after a display failure without retrying a command that may already have been saved.
+     */
+    private void handleConversationFailure(IllegalStateException failure) {
+        userInput.setDisable(true);
+        sendButton.setDisable(true);
+        fatalErrorHandler.accept(
+                "Tuesday could not display the conversation. Your command may already be saved.", failure);
+    }
+
+    /**
+     * Allows the farewell to remain visible for two seconds before exiting.
+     */
+    private static void scheduleExit() {
+        PauseTransition pause = new PauseTransition(Duration.seconds(2));
+        pause.setOnFinished(event -> Platform.exit());
+        pause.play();
     }
 
     /**

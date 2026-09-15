@@ -71,26 +71,7 @@ public class PersistenceTest {
             Task original = new Todo("original");
             tasks.add(original);
             IOException failure = new IOException("read or close failed");
-            BufferedReader reader = new BufferedReader(new StringReader("[T][ ] staged\n")) {
-                private boolean hasRead;
-
-                @Override
-                public String readLine() throws IOException {
-                    if (hasRead && !failsOnClose) {
-                        throw failure;
-                    }
-                    hasRead = true;
-                    return super.readLine();
-                }
-
-                @Override
-                public void close() throws IOException {
-                    super.close();
-                    if (failsOnClose) {
-                        throw failure;
-                    }
-                }
-            };
+            BufferedReader reader = new FailingTaskReader(failsOnClose, failure);
             assertSame(failure, assertThrows(IOException.class, () -> Storage.loadData(tasks, () -> reader)));
             assertEquals(1, tasks.size());
             assertSame(original, tasks.get(0));
@@ -173,5 +154,40 @@ public class PersistenceTest {
         assertTrue(Files.readString(target).startsWith("[T][ ] first"));
         assertTrue(parser.processCommand("delete 1", tasks).startsWith("Noted."));
         assertEquals("[T][ ] second" + System.lineSeparator(), Files.readString(target));
+    }
+
+    /**
+     * Supplies one valid task before failing on the next read or when the reader is closed.
+     */
+    private static class FailingTaskReader extends BufferedReader {
+        private final boolean failsOnClose;
+        private final IOException failure;
+        private boolean hasRead;
+
+        /**
+         * Selects the failure stage and preserves the exception instance for identity assertions.
+         */
+        FailingTaskReader(boolean failsOnClose, IOException failure) {
+            super(new StringReader("[T][ ] staged\n"));
+            this.failsOnClose = failsOnClose;
+            this.failure = failure;
+        }
+
+        @Override
+        public String readLine() throws IOException {
+            if (hasRead && !failsOnClose) {
+                throw failure;
+            }
+            hasRead = true;
+            return super.readLine();
+        }
+
+        @Override
+        public void close() throws IOException {
+            super.close();
+            if (failsOnClose) {
+                throw failure;
+            }
+        }
     }
 }

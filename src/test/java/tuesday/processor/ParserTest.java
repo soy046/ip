@@ -27,7 +27,48 @@ public class ParserTest {
     private Path temporaryDirectory;
 
     @Test
-    public void processCommand_scheduledTasks_preservesParsedValuesAndSavedFormat() throws Exception {
+    public void processCommand_markAndUnmark_preservesResponsesAndSavedStatus() throws IOException {
+        Path saveFile = temporaryDirectory.resolve("Tuesday.txt");
+        Parser parser = new Parser(saveFile.toString());
+        TaskList tasks = new TaskList();
+        Task task = new Todo("read book");
+        tasks.add(task);
+
+        assertEquals("Nice! I've marked this task as done:\n  [T][X] read book",
+                parser.processCommand("mark 1", tasks));
+        assertEquals("[T][X] read book" + System.lineSeparator(), Files.readString(saveFile));
+        assertSame(task, tasks.get(0));
+        assertTrue(task.isDone());
+
+        assertEquals("OK, I've marked this task as not done yet:\n  [T][ ] read book",
+                parser.processCommand("unmark 1", tasks));
+        assertEquals("[T][ ] read book" + System.lineSeparator(), Files.readString(saveFile));
+        assertSame(task, tasks.get(0));
+        assertFalse(task.isDone());
+    }
+
+    @Test
+    public void processCommand_deleteMiddleTask_preservesResponseAndRemainingOrder() throws IOException {
+        Path saveFile = temporaryDirectory.resolve("Tuesday.txt");
+        Parser parser = new Parser(saveFile.toString());
+        TaskList tasks = new TaskList();
+        Task firstTask = new Todo("first");
+        Task lastTask = new Todo("last");
+        tasks.add(firstTask);
+        tasks.add(new Todo("middle"));
+        tasks.add(lastTask);
+
+        assertEquals("Noted. I've removed this task:\n  [T][ ] middle\nNow you have 2 tasks in the list.",
+                parser.processCommand("delete 2", tasks));
+        assertEquals(2, tasks.size());
+        assertSame(firstTask, tasks.get(0));
+        assertSame(lastTask, tasks.get(1));
+        assertEquals("[T][ ] first" + System.lineSeparator() + "[T][ ] last" + System.lineSeparator(),
+                Files.readString(saveFile));
+    }
+
+    @Test
+    public void processCommand_deadlines_preservesParsedValuesAndSavedFormat() throws Exception {
         String[] inputs = {"2026-09-20", "10:30", "2026-09-20 10:30"};
         String[] displays = {"Sep 20 2026", "10:30", "Sep 20 2026 10:30"};
         Path saveFile = temporaryDirectory.resolve("Tuesday.txt");
@@ -36,26 +77,49 @@ public class ParserTest {
         StringBuilder expectedSave = new StringBuilder();
 
         for (int i = 0; i < inputs.length; i++) {
-            assertTrue(Parser.isAvailableTaskCommand("deadline work /by " + inputs[i]));
-            String response = parser.processCommand("deadline work " + i + " /by " + inputs[i], tasks);
             String expected = "[D][ ] work " + i + " (by: " + displays[i] + ")";
-            assertTrue(response.contains(expected));
-            assertEquals(expected, tasks.get(tasks.size() - 1).toString());
+            assertTaskAdded(parser, tasks, "deadline work " + i + " /by " + inputs[i], expected);
             expectedSave.append(expected).append(System.lineSeparator());
+        }
+        assertSavedTasks(saveFile, tasks, expectedSave.toString());
+    }
 
+    @Test
+    public void processCommand_events_preservesParsedValuesAndSavedFormat() throws Exception {
+        String[] inputs = {"2026-09-20", "10:30", "2026-09-20 10:30"};
+        String[] displays = {"Sep 20 2026", "10:30", "Sep 20 2026 10:30"};
+        Path saveFile = temporaryDirectory.resolve("Tuesday.txt");
+        Parser parser = new Parser(saveFile.toString());
+        TaskList tasks = new TaskList();
+        StringBuilder expectedSave = new StringBuilder();
+
+        for (int i = 0; i < inputs.length; i++) {
             for (int j = 0; j < inputs.length; j++) {
                 String description = "meeting " + i + " " + j;
                 String command = "event " + description + " /from " + inputs[i] + " /to " + inputs[j];
-                assertTrue(Parser.isAvailableTaskCommand(command));
-                response = parser.processCommand(command, tasks);
-                expected = "[E][ ] " + description + " (from: " + displays[i] + " to: " + displays[j] + ")";
-                assertTrue(response.contains(expected));
-                assertEquals(expected, tasks.get(tasks.size() - 1).toString());
+                String expected = "[E][ ] " + description + " (from: " + displays[i] + " to: " + displays[j] + ")";
+                assertTaskAdded(parser, tasks, command, expected);
                 expectedSave.append(expected).append(System.lineSeparator());
             }
         }
+        assertSavedTasks(saveFile, tasks, expectedSave.toString());
+    }
 
-        assertEquals(expectedSave.toString(), Files.readString(saveFile));
+    /**
+     * Checks that validation and command processing agree on the newly added task's display value.
+     */
+    private static void assertTaskAdded(Parser parser, TaskList tasks, String command, String expected)
+            throws Exception {
+        assertTrue(Parser.isAvailableTaskCommand(command));
+        assertTrue(parser.processCommand(command, tasks).contains(expected));
+        assertEquals(expected, tasks.get(tasks.size() - 1).toString());
+    }
+
+    /**
+     * Checks the complete saved text and reloads it to verify task order and display values.
+     */
+    private static void assertSavedTasks(Path saveFile, TaskList tasks, String expectedSave) throws IOException {
+        assertEquals(expectedSave, Files.readString(saveFile));
         TaskList loadedTasks = new TaskList();
         Storage.loadData(saveFile.toString(), loadedTasks);
         assertEquals(tasks.size(), loadedTasks.size());

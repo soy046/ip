@@ -223,11 +223,10 @@ public class Parser {
             return TaskValidation.invalid(ValidationCode.MISSING_DESCRIPTION, "event");
         }
 
-        if (fromIndex < 0 || toIndex < 0 || toIndex <= fromIndex
-                || countOccurrences(details, "/from") != 1
-                || countOccurrences(details, "/to") != 1
-                || details.substring(fromIndex + 5, toIndex).trim().isEmpty()
-                || details.substring(toIndex + 3).trim().isEmpty()) {
+        if (!hasValidEventMarkers(details, fromIndex, toIndex)) {
+            return TaskValidation.invalid(ValidationCode.MISSING_EVENT_TIME, "event");
+        }
+        if (hasEmptyEventTimes(details, fromIndex, toIndex)) {
             return TaskValidation.invalid(ValidationCode.MISSING_EVENT_TIME, "event");
         }
 
@@ -243,6 +242,23 @@ public class Parser {
         }
         String description = details.substring(0, fromIndex).trim();
         return new TaskValidation(new Event(description, from, to), null);
+    }
+
+    /**
+     * Checks that each event marker appears once and that the start marker ends before the end marker.
+     */
+    private static boolean hasValidEventMarkers(String details, int fromIndex, int toIndex) {
+        return fromIndex >= 0 && toIndex >= fromIndex + "/from".length()
+                && countOccurrences(details, "/from") == 1
+                && countOccurrences(details, "/to") == 1;
+    }
+
+    /**
+     * Checks for empty time sections after marker presence, order, and uniqueness have been validated.
+     */
+    private static boolean hasEmptyEventTimes(String details, int fromIndex, int toIndex) {
+        return details.substring(fromIndex + "/from".length(), toIndex).trim().isEmpty()
+                || details.substring(toIndex + "/to".length()).trim().isEmpty();
     }
 
     /**
@@ -385,11 +401,7 @@ public class Parser {
         pendingDuplicate = null;
 
         tasks.replace(duplicate.existingTaskIndex(), duplicate.proposedTask());
-        String response = "Got it. I've replaced this task:\n"
-                + "  " + duplicate.existingTask() + "\n"
-                + "with:\n"
-                + "  " + duplicate.proposedTask() + "\n"
-                + "You still have " + tasks.size() + " tasks in the list.";
+        String response = formatTaskReplaced(duplicate.existingTask(), duplicate.proposedTask(), tasks.size());
         try {
             Storage.modifyData(storageFilePath, tasks);
         } catch (IOException e) {
@@ -398,6 +410,17 @@ public class Parser {
                     + "The existing task was kept.";
         }
         return response;
+    }
+
+    /**
+     * Formats a replacement confirmation with the unchanged number of tasks.
+     */
+    private static String formatTaskReplaced(Task existingTask, Task proposedTask, int taskCount) {
+        return "Got it. I've replaced this task:\n"
+                + "  " + existingTask + "\n"
+                + "with:\n"
+                + "  " + proposedTask + "\n"
+                + "You still have " + taskCount + " tasks in the list.";
     }
 
     /**
@@ -439,9 +462,7 @@ public class Parser {
         }
 
         Task removedTask = tasks.remove(validation.index());
-        String response = "Noted. I've removed this task:\n"
-                + "  " + removedTask + "\n"
-                + "Now you have " + tasks.size() + " tasks in the list.";
+        String response = formatTaskDeleted(removedTask, tasks.size());
         try {
             Storage.modifyData(storageFilePath, tasks);
         } catch (IOException e) {
@@ -449,6 +470,15 @@ public class Parser {
             return Strings.SAVE_FAILURE;
         }
         return response;
+    }
+
+    /**
+     * Formats a deletion confirmation with the number of remaining tasks.
+     */
+    private static String formatTaskDeleted(Task removedTask, int taskCount) {
+        return "Noted. I've removed this task:\n"
+                + "  " + removedTask + "\n"
+                + "Now you have " + taskCount + " tasks in the list.";
     }
 
     /**
@@ -465,27 +495,47 @@ public class Parser {
 
         Task task = tasks.get(validation.index());
         boolean wasDone = task.isDone();
+        boolean isDone = command == Command.MARK;
+        setTaskCompletion(task, isDone);
+        String response = formatStatusChanged(task, isDone);
 
-        String response;
-        if (command == Command.MARK) {
-            task.mark();
-            response = Strings.MARK + "\n  " + task;
-        } else {
-            task.unmark();
-            response = Strings.UNMARK + "\n  " + task;
-        }
-
-        try {
-            Storage.modifyData(storageFilePath, tasks);
-        } catch (IOException e) {
-            if (wasDone) {
-                task.mark();
-            } else {
-                task.unmark();
-            }
+        if (!saveTaskStatus(task, wasDone, tasks)) {
             return Strings.SAVE_FAILURE;
         }
         return response;
+    }
+
+    /**
+     * Applies a completion state for both requested changes and failed-save recovery.
+     */
+    private static void setTaskCompletion(Task task, boolean isDone) {
+        if (isDone) {
+            task.mark();
+        } else {
+            task.unmark();
+        }
+    }
+
+    /**
+     * Saves the changed status, restoring the previous state if saving fails.
+     *
+     * @return True if saving succeeds, or false after restoring the previous status.
+     */
+    private boolean saveTaskStatus(Task task, boolean wasDone, TaskList tasks) {
+        try {
+            Storage.modifyData(storageFilePath, tasks);
+        } catch (IOException e) {
+            setTaskCompletion(task, wasDone);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Formats the confirmation for marking or unmarking a task.
+     */
+    private static String formatStatusChanged(Task task, boolean isDone) {
+        return (isDone ? Strings.MARK : Strings.UNMARK) + "\n  " + task;
     }
 
     /**
@@ -504,17 +554,28 @@ public class Parser {
         Task task = validation.task();
         int duplicateIndex = tasks.indexOfDuplicate(task);
         if (duplicateIndex >= 0) {
-            Task existingTask = tasks.get(duplicateIndex);
-            pendingDuplicate = new PendingDuplicate(task, existingTask, duplicateIndex);
-            return "I found an existing task with the same description:\n"
-                    + "  " + (duplicateIndex + 1) + "." + existingTask + "\n"
-                    + "Would you like to keep the new task or the old task?\n"
-                    + "Please reply with \"new\" or \"old\".";
+            return promptForDuplicate(task, tasks.get(duplicateIndex), duplicateIndex);
         }
 
-        String response = "Got it. I've added this task:\n"
-                + "  " + task + "\n"
-                + "Now you have " + (tasks.size() + 1) + " tasks in the list.";
+        return addTaskAndSave(task, tasks);
+    }
+
+    /**
+     * Remembers a proposed duplicate and prompts using the existing task's one-based list number.
+     */
+    private String promptForDuplicate(Task proposedTask, Task existingTask, int existingTaskIndex) {
+        pendingDuplicate = new PendingDuplicate(proposedTask, existingTask, existingTaskIndex);
+        return "I found an existing task with the same description:\n"
+                + "  " + (existingTaskIndex + 1) + "." + existingTask + "\n"
+                + "Would you like to keep the new task or the old task?\n"
+                + "Please reply with \"new\" or \"old\".";
+    }
+
+    /**
+     * Saves a new task before adding it to memory, leaving the list unchanged if saving fails.
+     */
+    private String addTaskAndSave(Task task, TaskList tasks) {
+        String response = formatTaskAdded(task, tasks.size() + 1);
         try {
             Storage.saveNewData(storageFilePath, task.toString());
         } catch (IOException e) {
@@ -522,6 +583,15 @@ public class Parser {
         }
         tasks.add(task);
         return response;
+    }
+
+    /**
+     * Formats an addition confirmation with the number of tasks after insertion.
+     */
+    private static String formatTaskAdded(Task task, int taskCount) {
+        return "Got it. I've added this task:\n"
+                + "  " + task + "\n"
+                + "Now you have " + taskCount + " tasks in the list.";
     }
 
     /**

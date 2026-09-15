@@ -28,6 +28,32 @@ public class ValidationTest {
     private Path temporaryDirectory;
 
     @Test
+    public void processCommand_missingOrRepeatedEventMarkers_preservesTimeErrorAndState() throws Exception {
+        String[] inputs = {
+            "event work",
+            "event work /to 11:00",
+            "event work /from 10:00 /to",
+            "event work /from/to 11:00",
+            "event work /from /to",
+            "event work /from 10:00 /to 11:00 /to 12:00"
+        };
+        Path saveFile = temporaryDirectory.resolve("tasks.txt");
+        Parser parser = new Parser(saveFile.toString());
+        TaskList tasks = new TaskList();
+        Task existingTask = new Todo("existing");
+        tasks.add(existingTask);
+
+        for (String input : inputs) {
+            assertEquals("please add both starting and ending times, sir!", parser.processCommand(input, tasks), input);
+            assertThrows(TuesdayExceptions.EventMissingTimeException.class, () ->
+                    Parser.isAvailableTaskCommand(input), input);
+        }
+        assertEquals(1, tasks.size());
+        assertSame(existingTask, tasks.get(0));
+        assertFalse(Files.exists(saveFile));
+    }
+
+    @Test
     public void processCommand_invalidInputs_preservesResponseAndState() throws IOException {
         String[][] cases = {
             {"todo", "please add description, sir!"},
