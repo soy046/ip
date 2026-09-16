@@ -22,8 +22,9 @@ import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 
 import tuesday.processor.Command;
-import tuesday.processor.Parser;
+import tuesday.processor.CommandProcessor;
 import tuesday.processor.Storage;
+import tuesday.processor.UserInputParser;
 import tuesday.task.TaskList;
 
 /**
@@ -42,7 +43,7 @@ public class MainWindow extends AnchorPane {
     private Image tuesdayImage = new Image(getClass().getResourceAsStream("/images/Tuesday.png"));
     private Image userImage = new Image(getClass().getResourceAsStream("/images/TonyStark.png"));
     private TaskList tasks = new TaskList();
-    private final Parser parser;
+    private final CommandProcessor commandProcessor;
     private final String storageFilePath;
     private final DialogFactory dialogFactory;
     private final BiConsumer<String, Throwable> fatalErrorHandler;
@@ -103,7 +104,7 @@ public class MainWindow extends AnchorPane {
      */
     MainWindow(String storageFilePath, DialogFactory dialogFactory, BiConsumer<String, Throwable> fatalErrorHandler) {
         this.storageFilePath = storageFilePath;
-        parser = new Parser(storageFilePath);
+        commandProcessor = new CommandProcessor(storageFilePath);
         this.dialogFactory = dialogFactory;
         this.fatalErrorHandler = fatalErrorHandler;
     }
@@ -267,11 +268,11 @@ public class MainWindow extends AnchorPane {
     @FXML
     private void handleUserInput() {
         String input = userInput.getText();
-        String response = parser.processCommand(input, tasks);
+        String response = commandProcessor.processCommand(input, tasks);
         if (!displayConversation(input, response)) {
             return;
         }
-        if (Parser.getCommand(input) == Command.BYE) {
+        if (UserInputParser.getCommand(input) == Command.BYE) {
             scheduleExit();
         }
     }
