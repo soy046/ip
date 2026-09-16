@@ -38,7 +38,7 @@ public class PersistenceTest {
     public void processCommand_saveFailure_restoresEveryAffectedTask() throws IOException {
         Path blockedParent = temporaryDirectory.resolve("blocked");
         Files.writeString(blockedParent, "original bytes");
-        Parser parser = new Parser(blockedParent.resolve("tasks.txt").toString());
+        CommandProcessor commandProcessor = new CommandProcessor(blockedParent.resolve("tasks.txt").toString());
         for (boolean wasDone : new boolean[] {false, true}) {
             TaskList tasks = new TaskList();
             Task first = new Todo("first");
@@ -49,18 +49,18 @@ public class PersistenceTest {
                 first.mark();
             }
             for (String input : new String[] {"todo third", "delete 1", "delete 2", "mark 1", "unmark 1"}) {
-                assertEquals(Strings.SAVE_FAILURE, parser.processCommand(input, tasks));
+                assertEquals(Strings.SAVE_FAILURE, commandProcessor.processCommand(input, tasks));
                 assertEquals(2, tasks.size());
                 assertSame(first, tasks.get(0));
                 assertSame(second, tasks.get(1));
                 assertEquals(wasDone, first.isDone());
                 assertEquals("original bytes", Files.readString(blockedParent));
             }
-            parser.processCommand("todo FIRST", tasks);
-            assertTrue(parser.processCommand("new", tasks).endsWith("The existing task was kept."));
+            commandProcessor.processCommand("todo FIRST", tasks);
+            assertTrue(commandProcessor.processCommand("new", tasks).endsWith("The existing task was kept."));
             assertSame(first, tasks.get(0));
             assertEquals(wasDone, first.isDone());
-            assertEquals("Sir, what do you mean by old", parser.processCommand("old", tasks));
+            assertEquals("Sir, what do you mean by old", commandProcessor.processCommand("old", tasks));
         }
     }
 
@@ -144,15 +144,15 @@ public class PersistenceTest {
     @Test
     public void processCommand_successfulChanges_persistBeforeConfirmation() throws IOException {
         Path target = temporaryDirectory.resolve("tasks.txt");
-        Parser parser = new Parser(target.toString());
+        CommandProcessor commandProcessor = new CommandProcessor(target.toString());
         TaskList tasks = new TaskList();
-        parser.processCommand("todo first", tasks);
-        parser.processCommand("todo second", tasks);
-        assertTrue(parser.processCommand("mark +1", tasks).startsWith(Strings.MARK));
+        commandProcessor.processCommand("todo first", tasks);
+        commandProcessor.processCommand("todo second", tasks);
+        assertTrue(commandProcessor.processCommand("mark +1", tasks).startsWith(Strings.MARK));
         assertTrue(Files.readString(target).startsWith("[T][X] first"));
-        assertTrue(parser.processCommand("unmark 1", tasks).startsWith(Strings.UNMARK));
+        assertTrue(commandProcessor.processCommand("unmark 1", tasks).startsWith(Strings.UNMARK));
         assertTrue(Files.readString(target).startsWith("[T][ ] first"));
-        assertTrue(parser.processCommand("delete 1", tasks).startsWith("Noted."));
+        assertTrue(commandProcessor.processCommand("delete 1", tasks).startsWith("Noted."));
         assertEquals("[T][ ] second" + System.lineSeparator(), Files.readString(target));
     }
 
