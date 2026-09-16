@@ -250,6 +250,26 @@ and copy `data/Tuesday.txt` somewhere safe.
 
 ## Troubleshooting
 
+Tuesday explains rejected commands so you can correct and submit them again. Rejected commands do not change
+your tasks or saved data.
+
+- **Unknown command:** `task abc` reports that `task` is not recognized and shows a clickable
+  [user-guide address](https://soy046.github.io/ip/). Click it to open the guide in your browser.
+  Tuesday does not suggest alternative command names.
+- **Missing time information:** `event meeting /from 14:00` asks for `/to` with a date or time value,
+  then shows the event syntax, accepted date/time formats, and an example.
+- **Invalid date/time:** `deadline work /by tomorrow` explains that the `/by` value is invalid and shows
+  `YYYY-MM-DD`, `HH:mm` (24-hour), and `YYYY-MM-DD HH:mm`, with a complete example. Impossible dates and
+  times such as `2026-02-30` and `25:00` receive the same guidance.
+- **Malformed syntax:** repeated `/by` markers or repeated/reversed event markers receive marker guidance.
+  `mark abc` shows `mark NUMBER`; use one whole task number with no extra arguments.
+- **Duplicate choices:** entering `new` or `old` outside a duplicate prompt explains when these choices apply.
+  While a duplicate prompt is pending, resolve it before entering another command.
+
+If a task command has several problems, Tuesday reports the missing description first, then marker problems,
+empty date/time values, and invalid date/time values. For events, it checks invalid start values before end values.
+Correct the reported problem and submit the command again.
+
 | Problem | What to do |
 | --- | --- |
 | `java` is not recognized or is not found | Install JDK 25, add its `bin` folder to your `PATH`, and reopen the terminal. |

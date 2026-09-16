@@ -18,6 +18,7 @@ import tuesday.task.Deadline;
 import tuesday.task.Task;
 import tuesday.task.TaskList;
 import tuesday.task.Todo;
+import tuesday.ui.Strings;
 
 /**
  * Tests command responses, task changes, and duplicate-task conversations.
@@ -189,7 +190,7 @@ public class CommandProcessorTest {
         commandProcessor.processCommand("todo READ BOOK", tasks);
 
         assertEquals("Bye. Hope to see you again soon!", commandProcessor.processCommand("bye", tasks));
-        assertEquals("Sir, what do you mean by old", commandProcessor.processCommand("old", tasks));
+        assertEquals(Strings.DUPLICATE_CHOICE_UNAVAILABLE, commandProcessor.processCommand("old", tasks));
         assertEquals(1, tasks.size());
     }
 
@@ -202,7 +203,7 @@ public class CommandProcessorTest {
         }
 
         assertEquals("Sir, this will cost too much time", commandProcessor.processCommand("todo task 0", tasks));
-        assertEquals("Sir, what do you mean by old", commandProcessor.processCommand("old", tasks));
+        assertEquals(Strings.DUPLICATE_CHOICE_UNAVAILABLE, commandProcessor.processCommand("old", tasks));
     }
 
     @Test

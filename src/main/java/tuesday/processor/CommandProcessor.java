@@ -1,6 +1,7 @@
 package tuesday.processor;
 
 import java.io.IOException;
+import java.util.Locale;
 
 import tuesday.processor.UserInputParser.IndexValidation;
 import tuesday.processor.UserInputParser.TaskValidation;
@@ -46,34 +47,85 @@ public final class CommandProcessor {
      * @return the response to display to the user.
      */
     public String processCommand(String input, TaskList tasks) {
+        return processResponse(input, tasks).toPlainText();
+    }
+
+    /**
+     * Executes a command once and provides link metadata separately from its text.
+     *
+     * @param input the command entered by the user.
+     * @param tasks the task list.
+     * @return the response and whether to offer the user guide.
+     */
+    public CommandResponse processResponse(String input, TaskList tasks) {
         if (pendingDuplicate != null) {
-            return processDuplicateResolution(input, tasks);
+            return new CommandResponse(processDuplicateResolution(input, tasks), false);
+        }
+        if (input == null || input.trim().isEmpty()) {
+            return new CommandResponse(Strings.EMPTY_COMMAND, false);
         }
 
         Command command = UserInputParser.getCommand(input);
 
-        return switch (command) {
+        String response = switch (command) {
             case BYE -> Strings.FAREWELL;
             case LIST -> processListCommand(tasks);
             case FIND -> processFindCommand(input, tasks);
             case DELETE -> processDeleteCommand(input, tasks);
             case MARK, UNMARK -> processTaskStatusCommand(input, tasks, command);
             case TODO, DEADLINE, EVENT -> processTaskCreationCommand(input, tasks, command);
-            case NEW, OLD, UNKNOWN -> "Sir, what do you mean by " + input;
+            case NEW, OLD -> Strings.DUPLICATE_CHOICE_UNAVAILABLE;
+            case UNKNOWN -> formatUnknownCommand(input);
+        };
+        return new CommandResponse(response, command == Command.UNKNOWN);
+    }
+
+    /**
+     * Converts an expected validation failure into guidance without throwing an exception.
+     */
+    private static String formatValidationError(ValidationError error, Command command) {
+        return switch (error.code()) {
+            case MISSING_DESCRIPTION -> "please add description, sir!";
+            case MISSING_DEADLINE, MISSING_EVENT_TIME, INVALID_DATE_TIME -> formatDateTimeError(error, command);
+            case INVALID_COMMAND_SYNTAX -> formatCommandSyntax(command);
+            case MARK_OUT_OF_RANGE -> "Sir, that mark number is out of range.";
+            case DELETE_OUT_OF_RANGE -> "Sir, that delete number is out of range.";
+            case UNKNOWN_COMMAND -> formatUnknownCommand(error.detail());
         };
     }
 
     /**
-     * Converts an expected validation failure into its existing user-facing response.
+     * Identifies only the unrecognized command word, not its arguments.
      */
-    private static String formatValidationError(ValidationError error, String originalInput) {
-        return switch (error.code()) {
-            case MISSING_DESCRIPTION -> "please add description, sir!";
-            case MISSING_DEADLINE -> "please add a deadline date, sir!";
-            case MISSING_EVENT_TIME -> "please add both starting and ending times, sir!";
-            case MARK_OUT_OF_RANGE -> "Sir, that mark number is out of range.";
-            case DELETE_OUT_OF_RANGE -> "Sir, that delete number is out of range.";
-            case UNKNOWN_COMMAND -> "Sir, what do you mean by " + originalInput;
+    private static String formatUnknownCommand(String input) {
+        String commandWord = input.trim().split("\\s+", 2)[0];
+        return "Sir, I don't recognize the command \"" + commandWord + "\".";
+    }
+
+    /**
+     * Explains the affected time field and supplies a complete command example.
+     */
+    private static String formatDateTimeError(ValidationError error, Command command) {
+        String explanation = error.code() == UserInputParser.ValidationCode.INVALID_DATE_TIME
+                ? "Sir, the value after " + error.field() + " is not a valid date or time."
+                : "Sir, please provide " + error.field() + " with a date or time value for each field.";
+        String syntax = command == Command.DEADLINE ? Strings.DEADLINE_SYNTAX : Strings.EVENT_SYNTAX;
+        String example = command == Command.DEADLINE ? Strings.DEADLINE_EXAMPLE : Strings.EVENT_EXAMPLE;
+        return explanation + "\n" + syntax + "\n" + Strings.DATE_TIME_FORMAT_HELP + "\n" + example;
+    }
+
+    /**
+     * Shows marker requirements or task-number syntax for a recognized command.
+     */
+    private static String formatCommandSyntax(Command command) {
+        return switch (command) {
+            case DEADLINE -> "Sir, include /by exactly once.\n"
+                    + Strings.DEADLINE_SYNTAX + "\n" + Strings.DEADLINE_EXAMPLE;
+            case EVENT -> "Sir, include /from followed by /to, each exactly once.\n"
+                    + Strings.EVENT_SYNTAX + "\n" + Strings.EVENT_EXAMPLE;
+            default -> "Sir, provide one whole task number with no extra arguments.\nFormat: "
+                    + command.name().toLowerCase(Locale.ROOT) + " NUMBER\nExample: "
+                    + command.name().toLowerCase(Locale.ROOT) + " 1";
         };
     }
 
@@ -171,7 +223,7 @@ public final class CommandProcessor {
     private String processDeleteCommand(String input, TaskList tasks) {
         IndexValidation validation = UserInputParser.validateTaskIndex(input, tasks.size(), Command.DELETE);
         if (validation.error() != null) {
-            return formatValidationError(validation.error(), input);
+            return formatValidationError(validation.error(), Command.DELETE);
         }
 
         Task removedTask = tasks.remove(validation.index());
@@ -203,7 +255,7 @@ public final class CommandProcessor {
 
         IndexValidation validation = UserInputParser.validateTaskIndex(input, tasks.size(), command);
         if (validation.error() != null) {
-            return formatValidationError(validation.error(), input);
+            return formatValidationError(validation.error(), command);
         }
 
         Task task = tasks.get(validation.index());
@@ -257,7 +309,7 @@ public final class CommandProcessor {
     private String processTaskCreationCommand(String input, TaskList tasks, Command command) {
         TaskValidation validation = UserInputParser.parseTaskCreation(input, command);
         if (validation.error() != null) {
-            return formatValidationError(validation.error(), input);
+            return formatValidationError(validation.error(), command);
         }
 
         if (tasks.size() >= MAX_TASKS) {

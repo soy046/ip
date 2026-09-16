@@ -62,7 +62,8 @@ public class UserInputParserTest {
 
         TaskValidation invalidDate = UserInputParser.parseTaskCreation("deadline work /by bad", Command.DEADLINE);
         assertNull(invalidDate.task());
-        assertEquals(ValidationCode.MISSING_DEADLINE, invalidDate.error().code());
+        assertEquals(ValidationCode.INVALID_DATE_TIME, invalidDate.error().code());
+        assertEquals("/by", invalidDate.error().field());
         assertEquals("bad", invalidDate.error().detail());
     }
 
@@ -72,14 +73,16 @@ public class UserInputParserTest {
         assertEquals(1, valid.index());
         assertNull(valid.error());
 
-        IndexValidation outOfRange = UserInputParser.validateTaskIndex("delete 2 extra", 1, Command.DELETE);
+        IndexValidation outOfRange = UserInputParser.validateTaskIndex("delete 2", 1, Command.DELETE);
         assertEquals(-1, outOfRange.index());
         assertEquals(ValidationCode.DELETE_OUT_OF_RANGE, outOfRange.error().code());
         assertEquals("2", outOfRange.error().detail());
 
         IndexValidation extraArgument = UserInputParser.validateTaskIndex("delete 1 extra", 1, Command.DELETE);
         assertEquals(-1, extraArgument.index());
-        assertEquals(ValidationCode.UNKNOWN_COMMAND, extraArgument.error().code());
+        assertEquals(ValidationCode.INVALID_COMMAND_SYNTAX, extraArgument.error().code());
+        assertEquals(ValidationCode.INVALID_COMMAND_SYNTAX,
+                UserInputParser.validateTaskIndex("delete 2 extra", 1, Command.DELETE).error().code());
     }
 
     @Test
@@ -126,7 +129,8 @@ public class UserInputParserTest {
         assertThrows(NullPointerException.class, () -> UserInputParser.isAvailableMark(null, tasks));
         assertThrows(NullPointerException.class, () -> UserInputParser.isAvailableDelete(null, tasks));
         assertEquals("0", assertThrows(TuesdayExceptions.MarkTaskNumberOutOfRangeException.class, () ->
-                UserInputParser.isAvailableMark("mark 0 extra", tasks)).getMessage());
+                UserInputParser.isAvailableMark("mark 0", tasks)).getMessage());
+        assertFalse(UserInputParser.isAvailableMark("mark 0 extra", tasks));
         assertEquals("2", assertThrows(TuesdayExceptions.DeleteTaskNumberOutOfRangeException.class, () ->
                 UserInputParser.isAvailableDelete("delete 2", tasks)).getMessage());
         for (String command : new String[] {"todo", "deadline", "event"}) {
@@ -135,8 +139,8 @@ public class UserInputParserTest {
         }
         assertEquals("", assertThrows(TuesdayExceptions.DeadlineMissingByDateException.class, () ->
                 UserInputParser.isAvailableTaskCommand("deadline work")).getMessage());
-        assertEquals("bad", assertThrows(TuesdayExceptions.DeadlineMissingByDateException.class, () ->
-                UserInputParser.isAvailableTaskCommand("deadline work /by bad")).getMessage());
+        assertFalse(UserInputParser.isAvailableTaskCommand("deadline work /by bad"));
+        assertFalse(UserInputParser.isAvailableTaskCommand("event work /to 11:00 /from 10:00"));
         assertEquals("event", assertThrows(TuesdayExceptions.EventMissingTimeException.class, () ->
                 UserInputParser.isAvailableTaskCommand("event work /from 10:00")).getMessage());
     }
@@ -151,6 +155,31 @@ public class UserInputParserTest {
                 "2026-01-00", "2026-04-31", "24:00", "12:60", "1:00", "2026-9-20", " 10:00",
                 "2026-09-20  10:00", "2026-09-20T10:00", ""}) {
             assertNull(UserInputParser.parseDateTime(value), value);
+        }
+    }
+
+    @Test
+    public void parseTaskCreation_multipleErrors_reportsFirstActionableField() {
+        String[][] cases = {
+            {"deadline /by bad", "MISSING_DESCRIPTION", ""},
+            {"deadline work /by bad /by", "INVALID_COMMAND_SYNTAX", ""},
+            {"deadline work", "MISSING_DEADLINE", "/by"},
+            {"event /to bad", "MISSING_DESCRIPTION", ""},
+            {"event work", "MISSING_EVENT_TIME", "/from and /to"},
+            {"event work /to bad", "MISSING_EVENT_TIME", "/from"},
+            {"event work /from bad", "MISSING_EVENT_TIME", "/to"},
+            {"event work /to bad /from bad", "INVALID_COMMAND_SYNTAX", ""},
+            {"event work /from bad /to", "MISSING_EVENT_TIME", "/to"},
+            {"event work /from /to", "MISSING_EVENT_TIME", "/from and /to"},
+            {"event work /from bad /to bad", "INVALID_DATE_TIME", "/from"},
+            {"event work /from 10:00 /to bad", "INVALID_DATE_TIME", "/to"}
+        };
+        for (String[] example : cases) {
+            TaskValidation result = UserInputParser.parseTaskCreation(
+                    example[0], UserInputParser.getCommand(example[0]));
+            assertNull(result.task(), example[0]);
+            assertEquals(ValidationCode.valueOf(example[1]), result.error().code(), example[0]);
+            assertEquals(example[2], result.error().field(), example[0]);
         }
     }
 }

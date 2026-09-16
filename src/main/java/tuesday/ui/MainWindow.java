@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.NoSuchFileException;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
@@ -23,6 +24,7 @@ import javafx.util.Duration;
 
 import tuesday.processor.Command;
 import tuesday.processor.CommandProcessor;
+import tuesday.processor.CommandResponse;
 import tuesday.processor.Storage;
 import tuesday.processor.UserInputParser;
 import tuesday.task.TaskList;
@@ -47,6 +49,8 @@ public class MainWindow extends AnchorPane {
     private final String storageFilePath;
     private final DialogFactory dialogFactory;
     private final BiConsumer<String, Throwable> fatalErrorHandler;
+    /** Opens external links using the running JavaFX application. */
+    private Consumer<String> linkOpener;
 
     /**
      * The first visible message before a resize, or {@code null} when no message is visible.
@@ -118,6 +122,24 @@ public class MainWindow extends AnchorPane {
         initializeResizeTracking();
 
         tasks = loadTasks(storageFilePath);
+    }
+
+    /**
+     * Supplies browser access separately from command processing and storage.
+     *
+     * @param linkOpener the action used to open a web address.
+     */
+    public void setLinkOpener(Consumer<String> linkOpener) {
+        this.linkOpener = linkOpener;
+    }
+
+    /**
+     * Opens the fixed guide address when its hyperlink is activated.
+     */
+    private void openUserGuide() {
+        if (linkOpener != null) {
+            linkOpener.accept(Strings.USER_GUIDE_URL);
+        }
     }
 
     /**
@@ -268,7 +290,7 @@ public class MainWindow extends AnchorPane {
     @FXML
     private void handleUserInput() {
         String input = userInput.getText();
-        String response = commandProcessor.processCommand(input, tasks);
+        CommandResponse response = commandProcessor.processResponse(input, tasks);
         if (!displayConversation(input, response)) {
             return;
         }
@@ -282,12 +304,15 @@ public class MainWindow extends AnchorPane {
      *
      * @return True after displaying the conversation, or false after reporting a dialog failure.
      */
-    private boolean displayConversation(String input, String response) {
+    private boolean displayConversation(String input, CommandResponse response) {
         DialogBox userDialog;
         DialogBox tuesdayDialog;
         try {
             userDialog = dialogFactory.create(input, userImage, true);
-            tuesdayDialog = dialogFactory.create(response, tuesdayImage, false);
+            tuesdayDialog = dialogFactory.create(response.text(), tuesdayImage, false);
+            if (response.showUserGuide()) {
+                tuesdayDialog.showUserGuideLink(this::openUserGuide);
+            }
         } catch (IllegalStateException e) {
             handleConversationFailure(e);
             return false;

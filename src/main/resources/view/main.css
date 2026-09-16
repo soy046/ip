@@ -30,3 +30,18 @@
     -fx-font-size: 15px;
     -fx-font-weight: bold;
 }
+
+.user-guide-link {
+    -fx-text-fill: #a8d8ff;
+    -fx-underline: true;
+    -fx-padding: 0;
+}
+
+.user-guide-link:hover, .user-guide-link:visited {
+    -fx-text-fill: #d7edff;
+}
+
+.user-guide-link:focused {
+    -fx-border-color: #ffffff;
+    -fx-border-style: dotted;
+}

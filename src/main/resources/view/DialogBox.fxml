@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Hyperlink?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
 
 <fx:root alignment="TOP_RIGHT"
          spacing="8.0"
@@ -13,12 +15,16 @@
          xmlns="http://javafx.com/javafx/17"
          xmlns:fx="http://javafx.com/fxml/1">
     <children>
-        <Label fx:id="dialog"
-               styleClass="dialog-text"
-               text="Label"
-               wrapText="true"
-               minHeight="-Infinity"
-               minWidth="0.0" />
+        <VBox minWidth="0.0" spacing="4.0">
+            <Label fx:id="dialog"
+                   styleClass="dialog-text"
+                   text="Label"
+                   wrapText="true"
+                   minHeight="-Infinity"
+                   minWidth="0.0" />
+            <Hyperlink fx:id="userGuideLink" styleClass="user-guide-link"
+                       visible="false" managed="false" wrapText="true" minWidth="0.0" />
+        </VBox>
         <ImageView fx:id="displayPicture" pickOnBounds="true" preserveRatio="true" />
     </children>
 </fx:root>

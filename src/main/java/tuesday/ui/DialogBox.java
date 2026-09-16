@@ -10,6 +10,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -27,6 +28,8 @@ public class DialogBox extends HBox {
     private Label dialog;
     @FXML
     private ImageView displayPicture;
+    @FXML
+    private Hyperlink userGuideLink;
 
     /**
      * Loads the shared layout and applies the speaker's appearance.
@@ -63,12 +66,24 @@ public class DialogBox extends HBox {
         } catch (IOException e) {
             throw new IllegalStateException("Unable to load the dialog layout.", e);
         }
-        if (dialog == null || displayPicture == null) {
+        if (dialog == null || displayPicture == null || userGuideLink == null) {
             throw new IllegalStateException("The dialog layout is missing required controls.");
         }
 
         dialog.setText(text);
         displayPicture.setImage(img);
+    }
+
+    /**
+     * Displays the guide address and opens it only when the user activates the link.
+     *
+     * @param openGuide the browser action supplied by the application.
+     */
+    public void showUserGuideLink(Runnable openGuide) {
+        userGuideLink.setText(Strings.USER_GUIDE_URL);
+        userGuideLink.setOnAction(event -> openGuide.run());
+        userGuideLink.setVisible(true);
+        userGuideLink.setManaged(true);
     }
 
     /**

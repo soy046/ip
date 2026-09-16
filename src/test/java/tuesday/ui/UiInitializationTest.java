@@ -1,6 +1,7 @@
 package tuesday.ui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -11,6 +12,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
@@ -20,6 +22,7 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.AnchorPane;
@@ -186,6 +189,42 @@ public class UiInitializationTest {
             assertEquals("[T][ ] READ BOOK", loaded.get(0).toString());
             assertTrue(sendCommand(loader, "delete 1").startsWith("Noted."));
             assertEquals("", Files.readString(saveFile));
+            return null;
+        });
+    }
+
+    @Test
+    public void handleUserInput_unknownCommand_opensGuideOnlyWhenActivated() throws Exception {
+        Path saveFile = temporaryDirectory.resolve("tasks.txt");
+        onFxThread(() -> {
+            ArrayList<String> openedUrls = new ArrayList<>();
+            MainWindow controller = new MainWindow(saveFile.toString());
+            controller.setLinkOpener(openedUrls::add);
+            FXMLLoader loader = new FXMLLoader(Ui.class.getResource("/view/MainWindow.fxml"));
+            loader.setControllerFactory(type -> controller);
+            AnchorPane root = loader.load();
+            new Scene(root, 300, 300);
+            assertEquals("Sir, I don't recognize the command \"task\".", sendCommand(loader, "task abc"));
+            VBox conversation = (VBox) loader.getNamespace().get("dialogContainer");
+            DialogBox response = (DialogBox) conversation.getChildren().getLast();
+            Hyperlink link = (Hyperlink) response.lookup("#userGuideLink");
+            assertTrue(link.isVisible());
+            assertTrue(link.isManaged());
+            assertEquals("https://soy046.github.io/ip/", link.getText());
+            assertTrue(openedUrls.isEmpty());
+            root.applyCss();
+            root.layout();
+            assertTrue(link.getBoundsInParent().getMaxX() <= link.getParent().getLayoutBounds().getWidth());
+            link.fire();
+            assertEquals(List.of("https://soy046.github.io/ip/"), openedUrls);
+            sendCommand(loader, "deadline work /by tomorrow");
+            DialogBox errorResponse = (DialogBox) conversation.getChildren().getLast();
+            Hyperlink hiddenLink = (Hyperlink) errorResponse.lookup("#userGuideLink");
+            assertFalse(hiddenLink.isVisible());
+            assertFalse(hiddenLink.isManaged());
+            Hyperlink userLink = (Hyperlink) conversation.getChildren().getFirst().lookup("#userGuideLink");
+            assertFalse(userLink.isVisible());
+            assertFalse(Files.exists(saveFile));
             return null;
         });
     }

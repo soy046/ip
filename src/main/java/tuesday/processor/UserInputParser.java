@@ -78,7 +78,7 @@ public final class UserInputParser {
      * @param input the complete line entered by the user.
      * @return true if the input is a valid todo, deadline, or event command.
      * @throws TuesdayExceptions.NoDescriptionException if the description is missing.
-     * @throws TuesdayExceptions.DeadlineMissingByDateException if the deadline is missing or invalid.
+     * @throws TuesdayExceptions.DeadlineMissingByDateException if the deadline is missing.
      * @throws TuesdayExceptions.EventMissingTimeException if an event time section is missing.
      */
     public static boolean isAvailableTaskCommand(String input)
@@ -142,26 +142,26 @@ public final class UserInputParser {
      * @return a valid index or a validation error.
      */
     static IndexValidation validateTaskIndex(String input, int taskCount, Command command) {
-        ValidationError unknown = new ValidationError(ValidationCode.UNKNOWN_COMMAND, input);
+        ValidationError syntaxError = new ValidationError(ValidationCode.INVALID_COMMAND_SYNTAX, input);
         try (Scanner scanner = new Scanner(input)) {
             if (!scanner.hasNext()) {
-                return new IndexValidation(-1, unknown);
+                return new IndexValidation(-1, syntaxError);
             }
             Command actualCommand = getCommand(scanner.next());
             boolean isMatchingCommand = command == Command.DELETE
                     ? actualCommand == Command.DELETE
                     : actualCommand == Command.MARK || actualCommand == Command.UNMARK;
             if (!isMatchingCommand || !scanner.hasNextInt()) {
-                return new IndexValidation(-1, unknown);
+                return new IndexValidation(-1, syntaxError);
             }
             int target = scanner.nextInt();
+            if (scanner.hasNext()) {
+                return new IndexValidation(-1, syntaxError);
+            }
             if (target <= 0 || target > taskCount) {
                 ValidationCode code = command == Command.DELETE
                         ? ValidationCode.DELETE_OUT_OF_RANGE : ValidationCode.MARK_OUT_OF_RANGE;
                 return new IndexValidation(-1, new ValidationError(code, String.valueOf(target)));
-            }
-            if (scanner.hasNext()) {
-                return new IndexValidation(-1, unknown);
             }
             return new IndexValidation(target - 1, null);
         }
@@ -195,7 +195,7 @@ public final class UserInputParser {
     }
 
     /**
-     * Parses a deadline while preserving the precedence of description, date-time, and syntax errors.
+     * Checks description and marker syntax before validating the deadline value.
      */
     private static TaskValidation parseDeadline(String input) {
         String details = input.trim().substring("deadline".length()).trim();
@@ -205,16 +205,19 @@ public final class UserInputParser {
             return TaskValidation.invalid(ValidationCode.MISSING_DESCRIPTION, "deadline");
         }
 
-        if (byIndex <= 0 || details.substring(byIndex + 3).trim().isEmpty()) {
-            return TaskValidation.invalid(ValidationCode.MISSING_DEADLINE, "");
+        if (byIndex < 0) {
+            return TaskValidation.invalid(ValidationCode.MISSING_DEADLINE, "", "/by");
         }
         String deadline = details.substring(byIndex + 3).trim();
+        if (countOccurrences(details, "/by") != 1) {
+            return TaskValidation.invalid(ValidationCode.INVALID_COMMAND_SYNTAX, input);
+        }
+        if (deadline.isEmpty()) {
+            return TaskValidation.invalid(ValidationCode.MISSING_DEADLINE, "", "/by");
+        }
         Event.DateTimeValue by = parseDateTime(deadline);
         if (by == null) {
-            return TaskValidation.invalid(ValidationCode.MISSING_DEADLINE, deadline);
-        }
-        if (countOccurrences(details, "/by") != 1 || deadline.contains("/")) {
-            return TaskValidation.invalid(ValidationCode.UNKNOWN_COMMAND, input);
+            return TaskValidation.invalid(ValidationCode.INVALID_DATE_TIME, deadline, "/by");
         }
         String description = details.substring(0, byIndex).trim();
         return new TaskValidation(new Deadline(description, by.date(), by.time()), null);
@@ -228,26 +231,28 @@ public final class UserInputParser {
         int fromIndex = details.indexOf("/from");
         int toIndex = details.indexOf("/to");
 
-        if (details.isEmpty() || fromIndex == 0) {
+        if (details.isEmpty() || fromIndex == 0 || toIndex == 0) {
             return TaskValidation.invalid(ValidationCode.MISSING_DESCRIPTION, "event");
         }
 
-        if (!hasValidEventMarkers(details, fromIndex, toIndex)) {
-            return TaskValidation.invalid(ValidationCode.MISSING_EVENT_TIME, "event");
+        ValidationError markerError = validateEventMarkers(details, fromIndex, toIndex);
+        if (markerError != null) {
+            return new TaskValidation(null, markerError);
         }
-        if (hasEmptyEventTimes(details, fromIndex, toIndex)) {
-            return TaskValidation.invalid(ValidationCode.MISSING_EVENT_TIME, "event");
+        ValidationError timeError = validateEventTimeValues(details, fromIndex, toIndex);
+        if (timeError != null) {
+            return new TaskValidation(null, timeError);
         }
 
         String startTime = details.substring(fromIndex + 5, toIndex).trim();
         String endTime = details.substring(toIndex + 3).trim();
-        if (startTime.contains("/") || endTime.contains("/")) {
-            return TaskValidation.invalid(ValidationCode.UNKNOWN_COMMAND, input);
-        }
         Event.DateTimeValue from = parseDateTime(startTime);
         Event.DateTimeValue to = parseDateTime(endTime);
-        if (from == null || to == null) {
-            return TaskValidation.invalid(ValidationCode.UNKNOWN_COMMAND, input);
+        if (from == null) {
+            return TaskValidation.invalid(ValidationCode.INVALID_DATE_TIME, startTime, "/from");
+        }
+        if (to == null) {
+            return TaskValidation.invalid(ValidationCode.INVALID_DATE_TIME, endTime, "/to");
         }
         String description = details.substring(0, fromIndex).trim();
         return new TaskValidation(new Event(description, from, to), null);
@@ -256,18 +261,29 @@ public final class UserInputParser {
     /**
      * Checks that each event marker appears once and that the start marker ends before the end marker.
      */
-    private static boolean hasValidEventMarkers(String details, int fromIndex, int toIndex) {
-        return fromIndex >= 0 && toIndex >= fromIndex + "/from".length()
-                && countOccurrences(details, "/from") == 1
-                && countOccurrences(details, "/to") == 1;
+    private static ValidationError validateEventMarkers(String details, int fromIndex, int toIndex) {
+        if (fromIndex < 0 || toIndex < 0) {
+            String field = fromIndex < 0 && toIndex < 0 ? "/from and /to" : fromIndex < 0 ? "/from" : "/to";
+            return new ValidationError(ValidationCode.MISSING_EVENT_TIME, "event", field);
+        }
+        if (toIndex < fromIndex + "/from".length()
+                || countOccurrences(details, "/from") != 1 || countOccurrences(details, "/to") != 1) {
+            return new ValidationError(ValidationCode.INVALID_COMMAND_SYNTAX, details);
+        }
+        return null;
     }
 
     /**
      * Checks for empty time sections after marker presence, order, and uniqueness have been validated.
      */
-    private static boolean hasEmptyEventTimes(String details, int fromIndex, int toIndex) {
-        return details.substring(fromIndex + "/from".length(), toIndex).trim().isEmpty()
-                || details.substring(toIndex + "/to".length()).trim().isEmpty();
+    private static ValidationError validateEventTimeValues(String details, int fromIndex, int toIndex) {
+        boolean isStartEmpty = details.substring(fromIndex + "/from".length(), toIndex).trim().isEmpty();
+        boolean isEndEmpty = details.substring(toIndex + "/to".length()).trim().isEmpty();
+        if (isStartEmpty || isEndEmpty) {
+            String field = isStartEmpty && isEndEmpty ? "/from and /to" : isStartEmpty ? "/from" : "/to";
+            return new ValidationError(ValidationCode.MISSING_EVENT_TIME, "event", field);
+        }
+        return null;
     }
 
     /**
@@ -337,6 +353,8 @@ public final class UserInputParser {
      */
     enum ValidationCode {
         UNKNOWN_COMMAND,
+        INVALID_DATE_TIME,
+        INVALID_COMMAND_SYNTAX,
         MISSING_DESCRIPTION,
         MISSING_DEADLINE,
         MISSING_EVENT_TIME,
@@ -347,7 +365,10 @@ public final class UserInputParser {
     /**
      * Keeps the failure category and payload used by the public exception-based adapters.
      */
-    record ValidationError(ValidationCode code, String detail) {
+    record ValidationError(ValidationCode code, String detail, String field) {
+        ValidationError(ValidationCode code, String detail) {
+            this(code, detail, "");
+        }
     }
 
     /**
@@ -359,6 +380,13 @@ public final class UserInputParser {
          */
         private static TaskValidation invalid(ValidationCode code, String detail) {
             return new TaskValidation(null, new ValidationError(code, detail));
+        }
+
+        /**
+         * Creates a failed validation result identifying the affected date/time field.
+         */
+        private static TaskValidation invalid(ValidationCode code, String detail, String field) {
+            return new TaskValidation(null, new ValidationError(code, detail, field));
         }
     }
 

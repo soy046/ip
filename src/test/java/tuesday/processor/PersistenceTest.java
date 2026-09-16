@@ -60,7 +60,7 @@ public class PersistenceTest {
             assertTrue(commandProcessor.processCommand("new", tasks).endsWith("The existing task was kept."));
             assertSame(first, tasks.get(0));
             assertEquals(wasDone, first.isDone());
-            assertEquals("Sir, what do you mean by old", commandProcessor.processCommand("old", tasks));
+            assertEquals(Strings.DUPLICATE_CHOICE_UNAVAILABLE, commandProcessor.processCommand("old", tasks));
         }
     }
 
